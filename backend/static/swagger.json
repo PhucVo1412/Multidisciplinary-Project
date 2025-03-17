@@ -1,0 +1,163 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "title": "Flask Auth with Users & Items",
+    "description": "Flask API with user registration, login (JWT), and item management.",
+    "version": "1.0.0"
+  },
+  "basePath": "/",
+  "schemes": [
+    "http"
+  ],
+  "paths": {
+    "/register": {
+      "post": {
+        "tags": ["Auth"],
+        "summary": "Register a new user",
+        "description": "Creates a user with a username and hashed password.",
+        "operationId": "registerUser",
+        "consumes": ["application/json"],
+        "produces": ["application/json"],
+        "parameters": [
+          {
+            "in": "body",
+            "name": "body",
+            "description": "User registration info",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "properties": {
+                "username": { "type": "string", "example": "alice" },
+                "password": { "type": "string", "example": "secret123" }
+              }
+            }
+          }
+        ],
+        "responses": {
+          "201": { "description": "User registered successfully" },
+          "400": { "description": "Missing or invalid input / User already exists" }
+        }
+      }
+    },
+    "/login": {
+      "post": {
+        "tags": ["Auth"],
+        "summary": "Log in and get a JWT token",
+        "description": "Checks username/password and returns a token if valid.",
+        "operationId": "loginUser",
+        "consumes": ["application/json"],
+        "produces": ["application/json"],
+        "parameters": [
+          {
+            "in": "body",
+            "name": "body",
+            "description": "User credentials",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "properties": {
+                "username": { "type": "string", "example": "alice" },
+                "password": { "type": "string", "example": "secret123" }
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": { "description": "Successful login; returns access_token" },
+          "400": { "description": "Missing username or password" },
+          "401": { "description": "Invalid credentials" }
+        }
+      }
+    },
+    "/items": {
+      "get": {
+        "tags": ["Items"],
+        "summary": "Get all items for the logged-in user",
+        "description": "Requires JWT. Returns only items owned by the logged-in user.",
+        "operationId": "getItems",
+        "produces": ["application/json"],
+        "security": [
+          { "Bearer": [] }
+        ],
+        "responses": {
+          "200": {
+            "description": "A list of items"
+          },
+          "401": {
+            "description": "Unauthorized (no or invalid token)"
+          }
+        }
+      },
+      "post": {
+        "tags": ["Items"],
+        "summary": "Create a new item (linked to the logged-in user)",
+        "description": "Requires JWT.",
+        "operationId": "createItem",
+        "consumes": ["application/json"],
+        "produces": ["application/json"],
+        "security": [
+          { "Bearer": [] }
+        ],
+        "parameters": [
+          {
+            "in": "body",
+            "name": "body",
+            "description": "Item data",
+            "required": true,
+            "schema": {
+              "type": "object",
+              "properties": {
+                "name": { "type": "string", "example": "My Fancy Item" }
+              }
+            }
+          }
+        ],
+        "responses": {
+          "201": { "description": "Item created" },
+          "400": { "description": "Missing item data" },
+          "401": { "description": "Unauthorized" }
+        }
+      }
+    },
+    "/items/{item_id}": {
+      "delete": {
+        "tags": ["Items"],
+        "summary": "Delete an item by ID (owned by the logged-in user)",
+        "description": "Requires JWT. Only deletes if the item belongs to you.",
+        "operationId": "deleteItem",
+        "produces": ["application/json"],
+        "security": [
+          { "Bearer": [] }
+        ],
+        "parameters": [
+          {
+            "name": "item_id",
+            "in": "path",
+            "required": true,
+            "type": "integer",
+            "description": "ID of the item to delete"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Item deleted"
+          },
+          "404": {
+            "description": "Item not found or not owned by user"
+          },
+          "401": {
+            "description": "Unauthorized"
+          }
+        }
+      }
+    }
+  },
+  "securityDefinitions": {
+    "Bearer": {
+      "type": "apiKey",
+      "name": "Authorization",
+      "in": "header",
+      "description": "Enter your token as: Bearer <JWT>"
+    }
+  }
+}
