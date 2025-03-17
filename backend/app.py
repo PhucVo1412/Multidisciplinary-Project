@@ -7,6 +7,8 @@ from flask_jwt_extended import (
 )
 from flask_swagger_ui import get_swaggerui_blueprint
 from flask_cors import CORS
+from datetime import datetime
+import pytz
 import os
 
 ###############################################################################
@@ -24,6 +26,11 @@ bcrypt = Bcrypt(app)
 jwt = JWTManager(app)
 
 ###############################################################################
+# TIMEZONE CONFIGURATION
+###############################################################################
+VIETNAM_TZ = pytz.timezone('Asia/Ho_Chi_Minh')
+
+###############################################################################
 # MODELS
 ###############################################################################
 class User(db.Model):
@@ -32,12 +39,13 @@ class User(db.Model):
     username = db.Column(db.String(80), unique=True, nullable=False)
     password_hash = db.Column(db.String(128), nullable=False)
 
-class Item(db.Model):
-    __tablename__ = 'items'
+class Record(db.Model):
+    __tablename__ = 'records'
     id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(80), nullable=False)
+    action = db.Column(db.String(200), nullable=False)
+    time = db.Column(db.DateTime, default=lambda: datetime.now(VIETNAM_TZ))  # Ensure default is correct
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
-    user = db.relationship('User', backref='items')
+    user = db.relationship('User', backref='records')
 
 ###############################################################################
 # CREATE TABLES IF THEY DON'T EXIST
@@ -123,61 +131,94 @@ def get_users():
     users = User.query.all()
     return jsonify([{'id': u.id, 'username': u.username} for u in users]), 200
 
-###############################################################################
-# ITEM ROUTES (PROTECTED)
-###############################################################################
-@app.route('/items', methods=['GET'])
+@app.route('/users/<int:user_id>', methods=['DELETE'])
 @jwt_required()
-def get_items():
+def delete_user(user_id):
     """
-    Gets all items for the logged-in user.
+    Deletes a user along with all associated records.
     """
-    current_user_id = get_jwt_identity()  # get user ID from token
-    items = Item.query.filter_by(user_id=current_user_id).all()
+    current_user_id = int(get_jwt_identity())
 
-    return jsonify([{'id': i.id, 'name': i.name} for i in items]), 200
+    if current_user_id != user_id:
+        return jsonify({'message': 'Unauthorized to delete this user'}), 403
 
-@app.route('/items', methods=['POST'])
+    user = User.query.get(user_id)
+    if not user:
+        return jsonify({'message': 'User not found'}), 404
+
+    # Delete all associated records
+    Record.query.filter_by(user_id=user_id).delete()
+    db.session.delete(user)
+    db.session.commit()
+
+    return jsonify({'message': 'User and associated records deleted'}), 200
+
+###############################################################################
+# RECORD ROUTES (PROTECTED)
+###############################################################################
+@app.route('/records', methods=['GET'])
 @jwt_required()
-def add_item():
+def get_records():
     """
-    Creates a new item linked to the logged-in user.
+    Get all records for the logged-in user.
     """
-    current_user_id = get_jwt_identity()
+    current_user_id = int(get_jwt_identity())
+    records = Record.query.filter_by(user_id=current_user_id).all()
+    output = []
+    for r in records:
+        output.append({
+            'id': r.id,
+            'action': r.action,
+            'time': r.time.strftime('%Y-%m-%d %H:%M:%S')
+        })
+
+    return jsonify(output), 200
+
+@app.route('/records', methods=['POST'])
+@jwt_required()
+def create_record():
+    """
+    Create a new record for the logged-in user.
+    """
+    current_user_id = int(get_jwt_identity())
     data = request.json
-    name = data.get('name')
-    if not name:
-        return jsonify({'message': 'Item name is required'}), 400
+    action = data.get('action')
 
-    new_item = Item(name=name, user_id=current_user_id)
-    db.session.add(new_item)
+    if not action:
+        return jsonify({'message': 'Action is required'}), 400
+
+    new_record = Record(action=action, user_id=current_user_id)
+    db.session.add(new_record)
     db.session.commit()
 
     return jsonify({
-        'message': 'Item created',
-        'item': {'id': new_item.id, 'name': new_item.name}
+        'message': 'Record created',
+        'record': {
+            'id': new_record.id,
+            'action': new_record.action,
+            'time': new_record.time.strftime('%Y-%m-%d %H:%M:%S')
+        }
     }), 201
 
-@app.route('/items/<int:item_id>', methods=['DELETE'])
+@app.route('/records/<int:record_id>', methods=['DELETE'])
 @jwt_required()
-def delete_item(item_id):
+def delete_record(record_id):
     """
-    Deletes an item if it belongs to the logged-in user.
+    Delete a record if it belongs to the logged-in user.
     """
-    current_user_id = get_jwt_identity()
-    item = Item.query.filter_by(id=item_id, user_id=current_user_id).first()
-    if not item:
-        return jsonify({'message': 'Item not found or not yours'}), 404
+    current_user_id = int(get_jwt_identity())
+    record = Record.query.filter_by(id=record_id, user_id=current_user_id).first()
 
-    db.session.delete(item)
+    if not record:
+        return jsonify({'message': 'Record not found or not yours'}), 404
+
+    db.session.delete(record)
     db.session.commit()
 
-    return jsonify({'message': 'Item deleted'}), 200
+    return jsonify({'message': 'Record deleted'}), 200
 
 ###############################################################################
 # RUN THE APP
 ###############################################################################
 if __name__ == '__main__':
-    # Make sure the 'static/swagger.json' file exists
-    # Then run: python app.py
     app.run(debug=True)
