@@ -20,7 +20,7 @@ CORS(app)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///data.db'
 # JWT secret key (change this to a strong random value in production!)
 app.config['JWT_SECRET_KEY'] = 'supersecretkey'
-
+#app.config['JWT_ACCESS_TOKEN_EXPIRES'] = timedelta(days=1)
 db = SQLAlchemy(app)
 bcrypt = Bcrypt(app)
 jwt = JWTManager(app)
