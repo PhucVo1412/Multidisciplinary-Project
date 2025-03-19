@@ -71,7 +71,13 @@ const UserUI = ({ setIsLoggedIn }) => {
           Action Log
         </button>
       </div>
-      <div >
+      <div style={{
+  display: 'flex',
+  marginLeft: '250px',
+  justifyContent: 'center', // Centers horizontally
+  alignItems: 'center', // Centers vertically
+  position: 'relative'
+  }}>
         {renderComponent()}
       </div>
     </div>

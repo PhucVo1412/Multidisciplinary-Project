@@ -40,7 +40,7 @@ const Login = ({ setIsLoggedIn }) => {
 
   return (
     <div className= "login-form">
-      <h1>AI Project App</h1>
+      <h2>Smart Home Protection Service</h2>
       <h2>{isRegistering ? 'Register' : 'Login'}</h2>
       <input className = "login-input"
         type="text"
