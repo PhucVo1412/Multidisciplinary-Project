@@ -2,15 +2,14 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 
 const ActionLog = () => {
-  // State for records, loading status, and error messages
   const [records, setRecords] = useState([]);
+  const [filteredRecords, setFilteredRecords] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [selectedDate, setSelectedDate] = useState('');
 
-  // Get JWT token from localStorage
   const token = localStorage.getItem('access_token');
 
-  // Fetch records when component mounts
   useEffect(() => {
     const fetchRecords = async () => {
       if (!token) {
@@ -27,7 +26,8 @@ const ActionLog = () => {
           },
         });
 
-        setRecords(response.data); // Assuming the backend returns an array of records
+        setRecords(response.data);
+        setFilteredRecords(response.data); // Initially show all records
         setError('');
       } catch (err) {
         if (err.response) {
@@ -43,7 +43,25 @@ const ActionLog = () => {
     fetchRecords();
   }, [token]);
 
-  // Render loading state
+  // Filter records when selectedDate changes
+  useEffect(() => {
+    if (!selectedDate) {
+      setFilteredRecords(records); // Show all records when no date is selected
+      return;
+    }
+
+    const filtered = records.filter(record => {
+      const recordDate = new Date(record.time).toISOString().split('T')[0];
+      return recordDate === selectedDate;
+    });
+    setFilteredRecords(filtered);
+  }, [selectedDate, records]);
+
+  // Handle date change
+  const handleDateChange = (e) => {
+    setSelectedDate(e.target.value);
+  };
+
   if (loading) {
     return (
       <div style={styles.loadingContainer}>
@@ -52,7 +70,6 @@ const ActionLog = () => {
     );
   }
 
-  // Render error state
   if (error) {
     return (
       <div style={styles.errorContainer}>
@@ -61,16 +78,40 @@ const ActionLog = () => {
     );
   }
 
-  // Render action log
   return (
     <div style={styles.container}>
       <div style={styles.card}>
         <h2 style={styles.header}>Your Action Log</h2>
-        {records.length === 0 ? (
-          <p style={styles.noRecords}>No actions recorded yet.</p>
+        <div style={styles.filterContainer}>
+          <label htmlFor="dateFilter" style={styles.filterLabel}>
+            Filter by Date:
+          </label>
+          <input
+            type="date"
+            id="dateFilter"
+            value={selectedDate}
+            onChange={handleDateChange}
+            style={styles.dateInput}
+          />
+          {selectedDate && (
+            <button
+              onClick={() => setSelectedDate('')}
+              style={styles.clearButton}
+            >
+              Clear Filter
+            </button>
+          )}
+        </div>
+        {filteredRecords.length === 0 ? (
+          <p style={styles.noRecords}>
+            {selectedDate 
+              ? `No actions recorded on ${new Date(selectedDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`
+              : 'No actions recorded yet.'
+            }
+          </p>
         ) : (
           <ul style={styles.recordList}>
-            {records.map((record) => (
+            {filteredRecords.map((record) => (
               <li key={record.id} style={styles.recordItem}>
                 <span style={styles.actionText}>{record.action}</span>
                 <span style={styles.timeText}>
@@ -92,19 +133,19 @@ const ActionLog = () => {
   );
 };
 
-// Inline styles to match the screenshot and make the card larger
 const styles = {
+  // Existing styles remain unchanged, adding new styles for filter
   container: {
     display: 'flex',
     justifyContent: 'center',
     alignItems: 'center',
-    minHeight: 'calc(100vh - 60px)', // Adjust for header height (assuming 60px for top bar)
+    minHeight: 'calc(100vh - 60px)',
     padding: '20px',
     boxSizing: 'border-box',
   },
   card: {
-    width: '700px', // Increased width to make it larger
-    maxWidth: '90%', // Ensure it doesn't overflow on smaller screens
+    width: '700px',
+    maxWidth: '90%',
     backgroundColor: '#ffffff',
     borderRadius: '8px',
     boxShadow: '0 4px 10px rgba(0, 0, 0, 0.1)',
@@ -117,6 +158,33 @@ const styles = {
     color: '#333',
     textAlign: 'center',
     marginBottom: '20px',
+  },
+  filterContainer: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '10px',
+    marginBottom: '20px',
+    justifyContent: 'center',
+  },
+  filterLabel: {
+    fontSize: '16px',
+    color: '#333',
+  },
+  date976Input: {
+    padding: '8px',
+    fontSize: '14px',
+    borderRadius: '4px',
+    border: '1px solid #ccc',
+    cursor: 'pointer',
+  },
+  clearButton: {
+    padding: '8px 12px',
+    fontSize: '14px',
+    backgroundColor: '#f0f0f0',
+    border: 'none',
+    borderRadius: '4px',
+    cursor: 'pointer',
+    color: '#333',
   },
   recordList: {
     listStyle: 'none',

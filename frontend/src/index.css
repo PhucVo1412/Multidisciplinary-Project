@@ -244,3 +244,28 @@ body {
   color: #2c3e50; /* Dark blue for headings */
   margin-bottom: 20px;
 }
+
+.button-container {
+  display: flex; /* Use Flexbox */
+  justify-content: space-between; /* Distribute space between buttons */
+  align-items: stretch; /* Stretch buttons to fill the height */
+  width: 100%; /* Ensure the container takes full width */
+  height: 100px; /* Set a height for the container (adjust as needed) */
+  padding: 10px; /* Optional: Add some padding */
+  box-sizing: border-box; /* Include padding in the container's dimensions */
+}
+
+.button-container button {
+  flex: 1; /* Allow buttons to grow and take equal space */
+  margin: 0 5px; /* Add spacing between buttons */
+  background-color: #007bff; /* Button background color */
+  color: white; /* Button text color */
+  border: none; /* Remove default border */
+  border-radius: 5px; /* Optional: Add rounded corners */
+  font-size: 16px; /* Optional: Adjust font size */
+  cursor: pointer; /* Add pointer cursor on hover */
+}
+
+.button-container button:hover {
+  background-color: #0056b3; /* Darker background on hover */
+}

@@ -4,6 +4,7 @@ import LogoutIcon from '@mui/icons-material/Logout';
 import Action from './Action'; // Import the Action component
 import UserManagement from './UserManagement'; // Import the UserManagement component
 import ActionLog from './ActionLog'; // Import the ActionLog component
+import EquipmentManagement from './EquipmentManagement'
 
 const UserUI = ({ setIsLoggedIn }) => {
   const [currentTime, setCurrentTime] = useState(new Date().toLocaleTimeString());
@@ -37,6 +38,8 @@ const UserUI = ({ setIsLoggedIn }) => {
         return <UserManagement />;
       case 'actionLog':
         return <ActionLog />;
+      case 'equipment':
+        return <EquipmentManagement />
       default:
         return <h2>Welcome to the User Dashboard</h2>;
     }
@@ -70,14 +73,19 @@ const UserUI = ({ setIsLoggedIn }) => {
         >
           Action Log
         </button>
+        <button
+          className="sidebar-button"
+          onClick={() => handleButtonClick('equipment')}
+        >
+          Equipment Management
+        </button>
       </div>
-      <div style={{
-  display: 'flex',
-  marginLeft: '250px',
-  justifyContent: 'center', // Centers horizontally
-  alignItems: 'center', // Centers vertically
-  position: 'relative'
-  }}>
+      <div style = { {
+    display: 'flex',
+    marginLeft: '250px',
+    justifyContent: 'center', 
+    alignItems: 'center', 
+    position: 'relative',}}>
         {renderComponent()}
       </div>
     </div>
