@@ -6,7 +6,15 @@ const ActionLog = () => {
   const [filteredRecords, setFilteredRecords] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  
+  // Filter states
   const [selectedDate, setSelectedDate] = useState('');
+  const [selectedDeviceType, setSelectedDeviceType] = useState('');
+  const [selectedDeviceId, setSelectedDeviceId] = useState('');
+  
+  // Available options for filters
+  const [deviceTypes, setDeviceTypes] = useState([]);
+  const [deviceIds, setDeviceIds] = useState([]);
 
   const token = localStorage.getItem('access_token');
 
@@ -19,7 +27,7 @@ const ActionLog = () => {
       }
 
       try {
-        const response = await axios.get('http://localhost:5000/records', {
+        const response = await axios.get('http://localhost:5000/controls', {
           headers: {
             Authorization: `Bearer ${token}`,
             'Content-Type': 'application/json',
@@ -27,7 +35,14 @@ const ActionLog = () => {
         });
 
         setRecords(response.data);
-        setFilteredRecords(response.data); // Initially show all records
+        setFilteredRecords(response.data);
+        
+        // Extract unique device types and IDs for filter options
+        const types = [...new Set(response.data.map(record => record.device_type))];
+        const ids = [...new Set(response.data.map(record => record.device_id))];
+        
+        setDeviceTypes(types);
+        setDeviceIds(ids);
         setError('');
       } catch (err) {
         if (err.response) {
@@ -43,23 +58,44 @@ const ActionLog = () => {
     fetchRecords();
   }, [token]);
 
-  // Filter records when selectedDate changes
+  // Apply filters whenever any filter criteria or records change
   useEffect(() => {
-    if (!selectedDate) {
-      setFilteredRecords(records); // Show all records when no date is selected
-      return;
+    let filtered = [...records];
+    
+    if (selectedDate) {
+      filtered = filtered.filter(record => {
+        const recordDate = new Date(record.start_time).toISOString().split('T')[0];
+        return recordDate === selectedDate;
+      });
     }
-
-    const filtered = records.filter(record => {
-      const recordDate = new Date(record.time).toISOString().split('T')[0];
-      return recordDate === selectedDate;
-    });
+    
+    if (selectedDeviceType) {
+      filtered = filtered.filter(record => record.device_type === selectedDeviceType);
+    }
+    
+    if (selectedDeviceId) {
+      filtered = filtered.filter(record => record.device_id === selectedDeviceId);
+    }
+    
     setFilteredRecords(filtered);
-  }, [selectedDate, records]);
+  }, [selectedDate, selectedDeviceType, selectedDeviceId, records]);
 
-  // Handle date change
   const handleDateChange = (e) => {
     setSelectedDate(e.target.value);
+  };
+
+  const handleDeviceTypeChange = (e) => {
+    setSelectedDeviceType(e.target.value);
+  };
+
+  const handleDeviceIdChange = (e) => {
+    setSelectedDeviceId(e.target.value);
+  };
+
+  const clearFilters = () => {
+    setSelectedDate('');
+    setSelectedDeviceType('');
+    setSelectedDeviceId('');
   };
 
   if (loading) {
@@ -82,30 +118,75 @@ const ActionLog = () => {
     <div style={styles.container}>
       <div style={styles.card}>
         <h2 style={styles.header}>Your Action Log</h2>
-        <div style={styles.filterContainer}>
-          <label htmlFor="dateFilter" style={styles.filterLabel}>
-            Filter by Date:
-          </label>
-          <input
-            type="date"
-            id="dateFilter"
-            value={selectedDate}
-            onChange={handleDateChange}
-            style={styles.dateInput}
-          />
-          {selectedDate && (
+        
+        {/* Filters Section */}
+        <div style={styles.filtersContainer}>
+          {/* Date Filter */}
+          <div style={styles.filterGroup}>
+            <label htmlFor="dateFilter" style={styles.filterLabel}>
+            Date:
+            </label>
+            <input
+              type="date"
+              id="dateFilter"
+              value={selectedDate}
+              onChange={handleDateChange}
+              style={styles.filterInput}
+            />
+          </div>
+          
+          {/* Device Type Filter */}
+          <div style={styles.filterGroup}>
+            <label htmlFor="deviceTypeFilter" style={styles.filterLabel}>
+            Device Type:
+            </label>
+            <select
+              id="deviceTypeFilter"
+              value={selectedDeviceType}
+              onChange={handleDeviceTypeChange}
+              style={styles.filterInput}
+            >
+              <option value="">All Types</option>
+              {deviceTypes.map(type => (
+                <option key={type} value={type}>{type}</option>
+              ))}
+            </select>
+          </div>
+          
+          {/* Device ID Filter */}
+          <div style={styles.filterGroup}>
+            <label htmlFor="deviceIdFilter" style={styles.filterLabel}>
+              Device ID:
+            </label>
+            <select
+              id="deviceIdFilter"
+              value={selectedDeviceId}
+              onChange={handleDeviceIdChange}
+              style={styles.filterInput}
+            >
+              <option value="">All IDs</option>
+              {deviceIds.map(id => (
+                <option key={id} value={id}>{id}</option>
+              ))}
+            </select>
+          </div>
+          
+          {/* Clear Filters Button */}
+          {(selectedDate || selectedDeviceType || selectedDeviceId) && (
             <button
-              onClick={() => setSelectedDate('')}
+              onClick={clearFilters}
               style={styles.clearButton}
             >
-              Clear Filter
+              Clear All Filters
             </button>
           )}
         </div>
+        
+        {/* Records List */}
         {filteredRecords.length === 0 ? (
           <p style={styles.noRecords}>
-            {selectedDate 
-              ? `No actions recorded on ${new Date(selectedDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`
+            {selectedDate || selectedDeviceType || selectedDeviceId 
+              ? 'No records match the selected filters'
               : 'No actions recorded yet.'
             }
           </p>
@@ -113,9 +194,14 @@ const ActionLog = () => {
           <ul style={styles.recordList}>
             {filteredRecords.map((record) => (
               <li key={record.id} style={styles.recordItem}>
-                <span style={styles.actionText}>{record.action}</span>
+                <div style={styles.recordDetails}>
+                  <span style={styles.actionText}>{record.action}</span>
+                  <span style={styles.deviceInfo}>
+                    {record.action} (ID: {record.device_id})
+                  </span>
+                </div>
                 <span style={styles.timeText}>
-                  {new Date(record.time).toLocaleString('en-US', {
+                  {new Date(record.start_time).toLocaleString('en-US', {
                     month: 'short',
                     day: 'numeric',
                     year: 'numeric',
@@ -134,7 +220,6 @@ const ActionLog = () => {
 };
 
 const styles = {
-  // Existing styles remain unchanged, adding new styles for filter
   container: {
     display: 'flex',
     justifyContent: 'center',
@@ -144,7 +229,7 @@ const styles = {
     boxSizing: 'border-box',
   },
   card: {
-    width: '700px',
+    width: '800px',
     maxWidth: '90%',
     backgroundColor: '#ffffff',
     borderRadius: '8px',
@@ -159,23 +244,28 @@ const styles = {
     textAlign: 'center',
     marginBottom: '20px',
   },
-  filterContainer: {
+  filtersContainer: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '15px',
+    marginBottom: '20px',
+  },
+  filterGroup: {
     display: 'flex',
     alignItems: 'center',
     gap: '10px',
-    marginBottom: '20px',
-    justifyContent: 'center',
   },
   filterLabel: {
-    fontSize: '16px',
+    fontSize: '14px',
     color: '#333',
+    minWidth: '120px',
   },
-  date976Input: {
+  filterInput: {
     padding: '8px',
     fontSize: '14px',
     borderRadius: '4px',
     border: '1px solid #ccc',
-    cursor: 'pointer',
+    flex: 1,
   },
   clearButton: {
     padding: '8px 12px',
@@ -185,6 +275,8 @@ const styles = {
     borderRadius: '4px',
     cursor: 'pointer',
     color: '#333',
+    marginTop: '10px',
+    alignSelf: 'flex-start',
   },
   recordList: {
     listStyle: 'none',
@@ -195,13 +287,21 @@ const styles = {
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: '10px 0',
+    padding: '12px 0',
     borderBottom: '1px solid #e0e0e0',
-    fontSize: '16px',
-    color: '#333',
+  },
+  recordDetails: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '4px',
   },
   actionText: {
     fontWeight: 'normal',
+    fontSize: '16px',
+  },
+  deviceInfo: {
+    fontSize: '14px',
+    color: '#666',
   },
   timeText: {
     fontSize: '14px',

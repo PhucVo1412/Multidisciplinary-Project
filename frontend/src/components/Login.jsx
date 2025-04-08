@@ -30,6 +30,9 @@ const Login = ({ setIsLoggedIn }) => {
       const response = await axios.post('http://localhost:5000/register', {
         username,
         password,
+        "role":"user",
+        "action": "default_action",
+        "access": "full",
       });
       setMessage('Registration successful! Please log in.');
       setIsRegistering(false); // Switch back to login after successful registration

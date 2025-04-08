@@ -21,8 +21,14 @@ const Action = () => {
 
     try {
       const response = await axios.post(
-        'http://localhost:5000/records', // Adjust URL if your backend runs on a different port/domain
-        { action },
+        'http://localhost:5000/controls', // Adjust URL if your backend runs on a different port/domain
+        { action ,
+          "device_type" : "door",
+          "device_id" : 3,
+          "equipment_id" : "1",
+          "status": "pending"
+
+        },
         {
           headers: {
             Authorization: `Bearer ${token}`, // Include JWT token in the request
