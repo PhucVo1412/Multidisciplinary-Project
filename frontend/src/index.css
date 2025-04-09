@@ -269,3 +269,93 @@ body {
 .button-container button:hover {
   background-color: #0056b3; /* Darker background on hover */
 }
+
+
+.ucontainer {
+  max-width: 80%;
+  margin: 40px auto;
+  padding: 40px;
+  background: white;
+  border-radius: 10px;
+  box-shadow: 0 0 20px rgba(0, 0, 0,  ˝0.1);
+}
+
+.uheader {
+  text-align: center;
+  margin-bottom: 30px;
+}
+
+.uheader h1 {
+  color: #2c3e50;
+  margin-bottom: 10px;
+}
+
+.uuser-profile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 30px;
+}
+
+.uprofile-pic {
+  width: 150px;
+  height: 150px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 5px solid #ecf0f1;
+  margin-bottom: 20px;
+}
+
+.uuser-details {
+  width: 100%;
+}
+
+.udetail-row {
+  display: flex;
+  margin-bottom: 15px;
+  padding-bottom: 15px;
+  border-bottom: 1px solid #eee;
+}
+
+.udetail-label {
+  flex: 1;
+  font-weight: bold;
+  color: #7f8c8d;
+}
+
+.udetail-value {
+  flex: 2;
+  color: #2c3e50;
+}
+
+.uactions {
+  display: flex;
+  justify-content: center;
+  margin-top: 30px;
+  gap: 15px;
+}
+
+.ubtn {
+  padding: 10px 20px;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  font-weight: bold;
+  transition: all 0.3s ease;
+}
+
+.ubtn-edit {
+  background-color: #3498db;
+  color: white;
+}
+
+.ubtn-settings {
+  background-color: #95a5a6;
+  color: white;
+}
+
+.ubtn:hover {
+  opacity: 0.9;
+  transform: translateY(-2px);
+}
+

@@ -203,7 +203,7 @@ const styles = {
     border: '1px solid #ddd',
     flex: 1,
     boxSizing: 'border-box',
-    backgroundColor: '#fff',
+    backgroundColor: "#169976",
   },
   submitButton: {
     width: '100%',

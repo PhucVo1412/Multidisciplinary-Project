@@ -168,12 +168,7 @@ const EquipmentManagement = () => {
   };
 
 
-  return (
-    <Box sx={{ p: 3 }}>
-      {/* Equipment List and Details JSX (same as before) */}
-
-    </Box>
-  );
+  return ;
 };
 
 export default EquipmentManagement;
