@@ -66,6 +66,41 @@
         }
       }
     },
+    "/me": {
+      "get": {
+        "summary": "Get current user information",
+        "security": [{ "BearerAuth": [] }],
+        "responses": {
+          "200": { "description": "User information retrieved" },
+          "404": { "description": "User not found" }
+        }
+      },
+      "put": {
+        "summary": "Update current user information",
+        "security": [{ "BearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": { "type": "string" },
+                  "account": { "type": "string" },
+                  "phone": { "type": "string" },
+                  "action": { "type": "string" },
+                  "access": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "User info updated" },
+          "404": { "description": "User not found" }
+        }
+      }
+    },
     "/face_identity": {
       "post": {
         "summary": "Create or update FaceIdentity",

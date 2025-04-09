@@ -241,6 +241,50 @@ def login():
         return jsonify({'access_token': access_token}), 200
     return jsonify({'message': 'Invalid credentials'}), 401
 
+@app.route('/me', methods=['GET'])
+@jwt_required()
+def get_current_user_info():
+    current_user_id = int(get_jwt_identity())
+    user = User.query.get(current_user_id)
+    if not user:
+        return jsonify({"message": "User not found"}), 404
+
+    response = {
+        "id": user.id,
+        "username": user.username,
+        "name": user.name,
+        "account": user.account,
+        "phone": user.phone,
+        "type": user.type
+    }
+
+    if isinstance(user, NormalUser):
+        response["action"] = user.action
+    elif isinstance(user, AdminUser):
+        response["access"] = user.access
+
+    return jsonify(response), 200
+
+@app.route('/me', methods=['PUT'])
+@jwt_required()
+def update_current_user_info():
+    current_user_id = int(get_jwt_identity())
+    user = User.query.get(current_user_id)
+    if not user:
+        return jsonify({"message": "User not found"}), 404
+
+    data = request.json
+    user.name = data.get('name', user.name)
+    user.account = data.get('account', user.account)
+    user.phone = data.get('phone', user.phone)
+
+    if isinstance(user, NormalUser):
+        user.action = data.get('action', user.action)
+    elif isinstance(user, AdminUser):
+        user.access = data.get('access', user.access)
+
+    db.session.commit()
+    return jsonify({"message": "User info updated successfully"}), 200
 
 # ---------------------------
 # Face Identity Routes
