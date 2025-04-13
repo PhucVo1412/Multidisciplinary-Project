@@ -1,6 +1,6 @@
-# 📖 Multidiciplinary Project
+# 🏠 Multidiciplinary Project
 ## 📝 Project Description  
-_AI project_
+_This project is about making smart home protection service, which can automatically open and lock house's door using face authentication. The system include an web application to control remotely._
 
 ## 🛠️ Programming Language 
 - **Language**: JavaScript, HTML, CSS
