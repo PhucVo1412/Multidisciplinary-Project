@@ -47,49 +47,49 @@ const UserManagement = () => {
   }
 
   if (error) {
-    return <div className="text-red-500">{error}</div>;
+    return <div >{error}</div>;
   }
 
-  return <div class="ucontainer">
-  <div class="uheader">
+  return <div >
+  <div >
       <h1>User Profile</h1>
       <p>View and manage your account information</p>
   </div>
 
-  <div class="uuser-profile">
-      <img src="../assets/Sample_User_Icon.png" alt="Profile Picture" class="profile-pic"/>
+  <div >
+      <img src="../assets/Sample_User_Icon.png" alt="Profile Picture" />
       
-      <div class="uuser-details">
-          <div class="udetail-row">
-              <div class="udetail-label">Full Name:</div>
-              <div class="udetail-value">John Doe</div>
+      <div >
+          <div>
+              <div>Full Name:</div>
+              <div>John Doe</div>
           </div>
-          <div class="udetail-row">
-              <div class="udetail-label">Email:</div>
-              <div class="udetail-value">john.doe@example.com</div>
+          <div >
+              <div>Email:</div>
+              <div>john.doe@example.com</div>
           </div>
-          <div class="udetail-row">
-              <div class="udetail-label">Phone:</div>
-              <div class="udetail-value">(123) 456-7890</div>
+          <div>
+              <div>Phone:</div>
+              <div>(123) 456-7890</div>
           </div>
-          <div class="udetail-row">
-              <div class="udetail-label">Address:</div>
-              <div class="udetail-value">123 Main St, Anytown, USA</div>
+          <div>
+              <div >Address:</div>
+              <div >123 Main St, Anytown, USA</div>
           </div>
-          <div class="udetail-row">
-              <div class="udetail-label">Member Since:</div>
-              <div class="udetail-value">January 15, 2020</div>
+          <div >
+              <div >Member Since:</div>
+              <div >January 15, 2020</div>
           </div>
-          <div class="udetail-row">
-              <div class="udetail-label">Account Status:</div>
-              <div class="udetail-value">Active</div>
+          <div >
+              <div >Account Status:</div>
+              <div >Active</div>
           </div>
       </div>
   </div>
 
-  <div class="uactions">
-      <button class="ubtn ubtn-edit">Edit Profile</button>
-      <button class="ubtn ubtn-settings">Account Settings</button>
+  <div >
+      <button >Edit Profile</button>
+      <button >Account Settings</button>
   </div>
 </div>;
     

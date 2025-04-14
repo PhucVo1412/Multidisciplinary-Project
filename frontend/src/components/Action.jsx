@@ -65,14 +65,33 @@ const Action = () => {
   };
 
   return (
-    <div style={styles.container}>
-      <div style={styles.card}>
-        <h2 style={styles.header}>Device Control</h2>
+    <div style={{
+      maxWidth: '600px',
+      margin: '0 auto',
+      padding: '30px',
+      backgroundColor: '#ffffff',
+      borderRadius: '12px',
+      boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
+    }}>
+      <div style={{ marginBottom: '30px' }}>
+        <h2 style={{
+          color: '#2c3e50',
+          marginBottom: '25px',
+          fontSize: '24px',
+          fontWeight: '600',
+          textAlign: 'center'
+        }}>
+          Device Control Panel
+        </h2>
         
-        <div style={styles.filterContainer}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
           {/* Device Type Filter */}
-          <div style={styles.filterGroup}>
-            <label htmlFor="deviceType" style={styles.filterLabel}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            <label htmlFor="deviceType" style={{
+              fontSize: '14px',
+              fontWeight: '500',
+              color: '#34495e'
+            }}>
               Device Type:
             </label>
             <select
@@ -82,9 +101,21 @@ const Action = () => {
                 setDeviceType(e.target.value);
                 setAction('');
               }}
-              style={styles.filterInput}
+              style={{
+                padding: '12px 15px',
+                borderRadius: '8px',
+                border: '1px solid #ddd',
+                fontSize: '15px',
+                backgroundColor: '#f9f9f9',
+                transition: 'all 0.3s',
+                ':focus': {
+                  outline: 'none',
+                  borderColor: '#3498db',
+                  boxShadow: '0 0 0 2px rgba(52,152,219,0.2)'
+                }
+              }}
             >
-              <option value="">Select type</option>
+              <option value="">Select device type</option>
               {deviceTypes.map(type => (
                 <option key={type} value={type}>
                   {type.charAt(0).toUpperCase() + type.slice(1)}
@@ -94,8 +125,12 @@ const Action = () => {
           </div>
 
           {/* Device ID Input */}
-          <div style={styles.filterGroup}>
-            <label htmlFor="deviceId" style={styles.filterLabel}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            <label htmlFor="deviceId" style={{
+              fontSize: '14px',
+              fontWeight: '500',
+              color: '#34495e'
+            }}>
               Device ID:
             </label>
             <input
@@ -103,22 +138,50 @@ const Action = () => {
               id="deviceId"
               value={deviceId}
               onChange={(e) => setDeviceId(e.target.value.replace(/\D/g, ''))}
-              placeholder="Enter ID"
-              style={styles.filterInput}
+              placeholder="Enter numeric ID"
+              style={{
+                padding: '12px 15px',
+                borderRadius: '8px',
+                border: '1px solid #ddd',
+                fontSize: '15px',
+                backgroundColor: '#f9f9f9',
+                transition: 'all 0.3s',
+                ':focus': {
+                  outline: 'none',
+                  borderColor: '#3498db',
+                  boxShadow: '0 0 0 2px rgba(52,152,219,0.2)'
+                }
+              }}
             />
           </div>
 
           {/* Action Selection */}
           {deviceType && (
-            <div style={styles.filterGroup}>
-              <label htmlFor="action" style={styles.filterLabel}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              <label htmlFor="action" style={{
+                fontSize: '14px',
+                fontWeight: '500',
+                color: '#34495e'
+              }}>
                 Action:
               </label>
               <select
                 id="action"
                 value={action}
                 onChange={(e) => setAction(e.target.value)}
-                style={styles.filterInput}
+                style={{
+                  padding: '12px 15px',
+                  borderRadius: '8px',
+                  border: '1px solid #ddd',
+                  fontSize: '15px',
+                  backgroundColor: '#f9f9f9',
+                  transition: 'all 0.3s',
+                  ':focus': {
+                    outline: 'none',
+                    borderColor: '#3498db',
+                    boxShadow: '0 0 0 2px rgba(52,152,219,0.2)'
+                  }
+                }}
               >
                 <option value="">Select action</option>
                 {actions[deviceType]?.map(act => (
@@ -134,109 +197,51 @@ const Action = () => {
         {/* Submit Button */}
         <button
           onClick={handleSubmit}
-          style={styles.submitButton}
           disabled={!deviceType || !deviceId || !action || isSubmitting}
+          style={{
+            width: '100%',
+            marginTop: '25px',
+            padding: '14px',
+            backgroundColor: !deviceType || !deviceId || !action ? '#bdc3c7' : '#3498db',
+            color: 'white',
+            border: 'none',
+            borderRadius: '8px',
+            fontSize: '16px',
+            fontWeight: '500',
+            cursor: !deviceType || !deviceId || !action ? 'not-allowed' : 'pointer',
+            transition: 'all 0.3s',
+            ':hover': {
+              backgroundColor: !deviceType || !deviceId || !action ? '#bdc3c7' : '#2980b9'
+            }
+          }}
         >
           {isSubmitting ? (
-            <span style={styles.buttonText}>Sending...</span>
+            <span>Sending Command...</span>
           ) : (
-            <span style={styles.buttonText}>Send Command</span>
+            <span>Send Command</span>
           )}
         </button>
 
         {/* Status Messages */}
-        <div style={styles.messageContainer}>
-          {error && <p style={styles.errorText}>{error}</p>}
-          {message && <p style={styles.successText}>{message}</p>}
+        <div style={{ marginTop: '20px' }}>
+          {error && <p style={{
+            color: '#e74c3c',
+            padding: '10px',
+            backgroundColor: '#fadbd8',
+            borderRadius: '6px',
+            fontSize: '14px'
+          }}>{error}</p>}
+          {message && <p style={{
+            color: '#27ae60',
+            padding: '10px',
+            backgroundColor: '#d5f5e3',
+            borderRadius: '6px',
+            fontSize: '14px'
+          }}>{message}</p>}
         </div>
       </div>
     </div>
   );
-};
-
-// Styles matching your ActionLog component exactly
-const styles = {
-  container: {
-    display: 'flex',
-    justifyContent: 'center',
-    alignItems: 'center',
-    minHeight: 'calc(100vh - 60px)',
-    padding: '20px',
-    boxSizing: 'border-box',
-  },
-  card: {
-    width: '500px',
-    maxWidth: '90%',
-    backgroundColor: '#ffffff',
-    borderRadius: '8px',
-    boxShadow: '0 4px 10px rgba(0, 0, 0, 0.1)',
-    padding: '25px',
-    boxSizing: 'border-box',
-  },
-  header: {
-    fontSize: '20px',
-    fontWeight: '600',
-    color: '#333',
-    textAlign: 'center',
-    marginBottom: '25px',
-  },
-  filterContainer: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '15px',
-    marginBottom: '20px',
-  },
-  filterGroup: {
-    display: 'flex',
-    alignItems: 'center',
-  },
-  filterLabel: {
-    fontSize: '14px',
-    color: '#333',
-    width: '100px',
-    flexShrink: 0,
-  },
-  filterInput: {
-    padding: '10px 12px',
-    fontSize: '14px',
-    borderRadius: '4px',
-    border: '1px solid #ddd',
-    flex: 1,
-    boxSizing: 'border-box',
-    backgroundColor: "#169976",
-  },
-  submitButton: {
-    width: '100%',
-    padding: '12px',
-    backgroundColor: '#4CAF50',
-    color: 'white',
-    border: 'none',
-    borderRadius: '4px',
-    fontSize: '16px',
-    fontWeight: '500',
-    cursor: 'pointer',
-    marginTop: '10px',
-    transition: 'background-color 0.2s',
-  },
-  buttonText: {
-    display: 'inline-block',
-    verticalAlign: 'middle',
-  },
-  messageContainer: {
-    marginTop: '15px',
-    textAlign: 'center',
-    minHeight: '20px',
-  },
-  errorText: {
-    color: '#d32f2f',
-    fontSize: '14px',
-    margin: 0,
-  },
-  successText: {
-    color: '#388e3c',
-    fontSize: '14px',
-    margin: 0,
-  },
 };
 
 export default Action;
