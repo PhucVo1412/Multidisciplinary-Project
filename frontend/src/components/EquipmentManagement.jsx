@@ -10,6 +10,7 @@ const EquipmentManagement = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [isCreating, setIsCreating] = useState(false);
+  const [deletingId, setDeletingId] = useState(null); // Track which equipment is being deleted
   
   // Filter states
   const [filters, setFilters] = useState({
@@ -71,7 +72,7 @@ const EquipmentManagement = () => {
     return () => {
       isMounted = false;
     };
-  }, [token]);
+  }, [isCreating]);
 
   // Apply filters
   useEffect(() => {
@@ -172,6 +173,34 @@ const EquipmentManagement = () => {
     }
   };
 
+  // Handle equipment deletion
+  const handleDeleteEquipment = async (id) => {
+    if (!token) {
+      setError('Please log in to delete equipment');
+      return;
+    }
+
+    if (!window.confirm('Are you sure you want to delete this equipment?')) {
+      return;
+    }
+
+    try {
+      setDeletingId(id);
+      await axios.delete(`${API_BASE_URL}/equipment/${id}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      // Remove the deleted equipment from the state
+      setEquipments(prev => prev.filter(equipment => equipment.id !== id));
+      setError('');
+    } catch (err) {
+      console.error('Deletion error:', err);
+      setError(err.response?.data?.message || 'Failed to delete equipment');
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
   // Loading state
   if (loading) {
     return (
@@ -203,7 +232,7 @@ const EquipmentManagement = () => {
       <div style={{
         position: 'fixed',
         top: 0,
-        right: showCreateForm ? 0 : '-400px',
+        right: showCreateForm ? 0 : '-500px',
         width: '400px',
         height: '100vh',
         backgroundColor: '#ffffff',
@@ -360,7 +389,7 @@ const EquipmentManagement = () => {
         </form>
       </div>
       
-      Overlay when form is open
+      {/* Overlay when form is open */}
       {showCreateForm && (
         <div 
           style={{
@@ -391,35 +420,6 @@ const EquipmentManagement = () => {
           fontWeight: '600',
           textAlign: 'center'
         }}>Equipment Management</h2>
-        
-        {/* Error message display
-        {error && (
-          <div style={{
-            padding: '15px',
-            backgroundColor: '#fadbd8',
-            color: '#e74c3c',
-            borderRadius: '8px',
-            marginBottom: '20px',
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center'
-          }}>
-            <p>{error}</p>
-            <button 
-              onClick={() => setError('')}
-              style={{
-                padding: '5px 10px',
-                backgroundColor: '#e74c3c',
-                color: 'white',
-                border: 'none',
-                borderRadius: '4px',
-                cursor: 'pointer'
-              }}
-            >
-              Dismiss
-            </button>
-          </div>
-        )} */}
         
         {/* Filter Controls */}
         <div style={{
@@ -573,6 +573,23 @@ const EquipmentManagement = () => {
                     }}>
                       {eq.status ? eq.status.charAt(0).toUpperCase() + eq.status.slice(1) : 'Unknown'}
                     </span>
+                    <button
+                      onClick={() => handleDeleteEquipment(eq.id)}
+                      disabled={deletingId === eq.id || !token}
+                      style={{
+                        padding: '6px 12px',
+                        backgroundColor: deletingId === eq.id || !token ? '#95a5a6' : '#e74c3c',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '4px',
+                        cursor: deletingId === eq.id || !token ? 'not-allowed' : 'pointer',
+                        fontWeight: '500',
+                        fontSize: '14px',
+                        transition: 'background-color 0.2s'
+                      }}
+                    >
+                      {deletingId === eq.id ? 'Deleting...' : 'Delete'}
+                    </button>
                   </div>
                 </li>
               ))}
