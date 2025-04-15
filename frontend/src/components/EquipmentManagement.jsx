@@ -4,563 +4,608 @@ import axios from 'axios';
 const API_BASE_URL = 'http://localhost:5000';
 
 const EquipmentManagement = () => {
+  // State management
   const [equipments, setEquipments] = useState([]);
-  const [selectedEquipment, setSelectedEquipment] = useState(null);
-  const [activeTab, setActiveTab] = useState(0);
-  const [openDialog, setOpenDialog] = useState(false);
-  const [dialogType, setDialogType] = useState('');
-  const [formData, setFormData] = useState({
-    name: '',
-    description: '',
-  });
-  const [ledLcds, setLedLcds] = useState([]);
-  const [lights, setLights] = useState([]);
-  const [doors, setDoors] = useState([]);
-  const [snackbar, setSnackbar] = useState({
-    open: false,
-    message: '',
-    severity: 'success'
-  });
-
-  const token = localStorage.getItem('access_token');
+  const [filteredEquipments, setFilteredEquipments] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [isCreating, setIsCreating] = useState(false);
   
+  // Filter states
+  const [filters, setFilters] = useState({
+    deviceType: '',
+    room: '',
+    id: ''
+  });
+  
+  // Create form states
+  const [showCreateForm, setShowCreateForm] = useState(false);
+  const [newEquipment, setNewEquipment] = useState({
+    name: 'Door',
+    status: 'active',
+    place_id: 1
+  });
+  const [formErrors, setFormErrors] = useState({});
+  
+  const token = localStorage.getItem('access_token');
+
+  // Fetch equipment data
   useEffect(() => {
+    let isMounted = true;
+    
+    const fetchEquipments = async () => {
+      if (!token) {
+        if (isMounted) {
+          setError('Please log in to view equipment');
+          setLoading(false);
+        }
+        return;
+      }
+
+      try {
+        const response = await axios.get(`${API_BASE_URL}/equipment`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        
+        if (isMounted) {
+          const data = Array.isArray(response.data) ? response.data : [];
+          // Sort by ID in descending order to show newest first
+          const sortedData = data.sort((a, b) => b.id - a.id);
+          setEquipments(sortedData);
+          setFilteredEquipments(sortedData);
+          setError('');
+        }
+      } catch (err) {
+        if (isMounted) {
+          setError(err.response?.data?.message || 'Failed to fetch equipment');
+        }
+      } finally {
+        if (isMounted) {
+          setLoading(false);
+        }
+      }
+    };
+
     fetchEquipments();
-  }, []);
+    
+    return () => {
+      isMounted = false;
+    };
+  }, [token]);
 
-  const fetchEquipments = async () => {
-    try {
-      const response = await axios.get(`${API_BASE_URL}/equipment`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-      });
-      setEquipments(response.data);
-    } catch (error) {
-      showSnackbar('Error fetching equipment', 'error');
-    }
-  };
-
-  // ... (keep all your existing fetch methods)
-
-  const showSnackbar = (message, severity) => {
-    setSnackbar({
-      open: true,
-      message,
-      severity
+  // Apply filters
+  useEffect(() => {
+    const filtered = equipments.filter(equipment => {
+      if (!equipment) return false;
+      if (filters.deviceType && 
+          !equipment.name?.toLowerCase().includes(filters.deviceType.toLowerCase())) {
+        return false;
+      }
+      if (filters.room && 
+          equipment.place_id?.toString() !== filters.room) {
+        return false;
+      }
+      if (filters.id && 
+          !equipment.id?.toString().includes(filters.id)) {
+        return false;
+      }
+      return true;
     });
-    setTimeout(() => setSnackbar({...snackbar, open: false}), 3000);
+    
+    setFilteredEquipments(filtered);
+  }, [filters, equipments]);
+
+  // Handle filter changes
+  const handleFilterChange = (e) => {
+    const { name, value } = e.target;
+    setFilters(prev => ({
+      ...prev,
+      [name]: value
+    }));
   };
 
-  const handleOpenDialog = (type, equipment = null) => {
-    setDialogType(type);
-    if (equipment) {
-      setFormData({
-        name: equipment.name,
-        description: equipment.description
-      });
-    } else {
-      setFormData({
-        name: '',
-        description: ''
-      });
-    }
-    setOpenDialog(true);
-  };
-
-  const handleCloseDialog = () => {
-    setOpenDialog(false);
-  };
-
+  // Handle input changes in create form
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    setFormData({
-      ...formData,
-      [name]: value
-    });
+    setNewEquipment(prev => ({
+      ...prev,
+      [name]: name === 'place_id' ? (value === '' ? '' : parseInt(value, 10)) : value
+    }));
+    setFormErrors(prev => ({ ...prev, [name]: '' }));
   };
+
+  // Handle create form submission
+  const handleCreateSubmit = async (e) => {
+    e.preventDefault();
+    
+    if (!token) {
+      setError('Please log in to create equipment');
+      setShowCreateForm(false);
+      return;
+    }
+    
+    // Validate form
+    const errors = {};
+    if (!newEquipment.name) errors.name = 'Device type is required';
+    if (!newEquipment.status) errors.status = 'Status is required';
+    if (newEquipment.place_id === '' || isNaN(newEquipment.place_id) || newEquipment.place_id <= 0) {
+      errors.place_id = 'Valid positive room number is required';
+    }
+    
+    if (Object.keys(errors).length > 0) {
+      setFormErrors(errors);
+      return;
+    }
+    
+    try {
+      setIsCreating(true);
+      const payload = {
+        name: newEquipment.name,
+        status: newEquipment.status,
+        place_id: parseInt(newEquipment.place_id, 10)
+      };
+      
+      const response = await axios.post(`${API_BASE_URL}/equipment`, payload, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      
+      if (!response.data || !response.data.id || !response.data.name || !response.data.status || response.data.place_id == null) {
+        throw new Error('Invalid equipment data returned from server');
+      }
+      
+      // Add new equipment at the beginning of the list
+      setEquipments(prev => [response.data, ...prev]);
+      setError('');
+      
+      setNewEquipment({
+        name: 'Door',
+        status: 'active',
+        place_id: 1
+      });
+      setShowCreateForm(false);
+      setFormErrors({});
+    } catch (err) {
+      console.error('Creation error:', err);
+      setError(err.response?.data?.message || 'Failed to create equipment');
+    } finally {
+      setIsCreating(false);
+    }
+  };
+
+  // Loading state
+  if (loading) {
+    return (
+      <div style={{
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
+        height: '200px'
+      }}>
+        <p style={{
+          color: '#7f8c8d',
+          fontSize: '18px'
+        }}>Loading equipment data...</p>
+      </div>
+    );
+  }
+
+  // Check if form is valid
+  const isFormValid = newEquipment.name && newEquipment.status && newEquipment.place_id !== '' && !isNaN(newEquipment.place_id) && newEquipment.place_id > 0;
 
   return (
     <div style={{
       maxWidth: '1200px',
       margin: '0 auto',
-      padding: '20px'
+      padding: '30px',
+      position: 'relative'
     }}>
+      {/* Slide-out Create Form */}
+      <div style={{
+        position: 'fixed',
+        top: 0,
+        right: showCreateForm ? 0 : '-400px',
+        width: '400px',
+        height: '100vh',
+        backgroundColor: '#ffffff',
+        boxShadow: '-4px 0 15px rgba(0,0,0,0.1)',
+        transition: 'right 0.3s ease-in-out',
+        zIndex: 1000,
+        padding: '30px',
+        overflowY: 'auto'
+      }}>
+        <h3 style={{
+          color: '#2c3e50',
+          marginBottom: '25px',
+          fontSize: '20px',
+          fontWeight: '600'
+        }}>Add New Equipment</h3>
+        
+        <form onSubmit={handleCreateSubmit}>
+          <div style={{ marginBottom: '20px' }}>
+            <label style={{
+              display: 'block',
+              marginBottom: '8px',
+              color: '#2c3e50',
+              fontWeight: '500'
+            }}>Device Type</label>
+            <select
+              name="name"
+              value={newEquipment.name}
+              onChange={handleInputChange}
+              style={{
+                width: '100%',
+                padding: '10px',
+                borderRadius: '6px',
+                border: formErrors.name ? '1px solid #e74c3c' : '1px solid #ddd',
+                backgroundColor: '#fff'
+              }}
+              disabled={isCreating}
+            >
+              <option value="Door">Door</option>
+              <option value="LedLCD">Led/LCD</option>
+              <option value="Light">Light</option>
+            </select>
+            {formErrors.name && (
+              <p style={{ color: '#e74c3c', fontSize: '14px', marginTop: '5px' }}>
+                {formErrors.name}
+              </p>
+            )}
+          </div>
+          
+          <div style={{ marginBottom: '20px' }}>
+            <label style={{
+              display: 'block',
+              marginBottom: '8px',
+              color: '#2c3e50',
+              fontWeight: '500'
+            }}>Status</label>
+            <select
+              name="status"
+              value={newEquipment.status}
+              onChange={handleInputChange}
+              style={{
+                width: '100%',
+                padding: '10px',
+                borderRadius: '6px',
+                border: formErrors.status ? '1px solid #e74c3c' : '1px solid #ddd',
+                backgroundColor: '#fff'
+              }}
+              disabled={isCreating}
+            >
+              <option value="active">Active</option>
+              <option value="inactive">Inactive</option>
+              <option value="maintenance">Maintenance</option>
+            </select>
+            {formErrors.status && (
+              <p style={{ color: '#e74c3c', fontSize: '14px', marginTop: '5px' }}>
+                {formErrors.status}
+              </p>
+            )}
+          </div>
+          
+          <div style={{ marginBottom: '30px' }}>
+            <label style={{
+              display: 'block',
+              marginBottom: '8px',
+              color: '#2c3e50',
+              fontWeight: '500'
+            }}>Room Number</label>
+            <input
+              type="number"
+              name="place_id"
+              value={newEquipment.place_id}
+              onChange={handleInputChange}
+              min="1"
+              style={{
+                width: '100%',
+                padding: '10px',
+                borderRadius: '6px',
+                border: formErrors.place_id ? '1px solid #e74c3c' : '1px solid #ddd',
+                backgroundColor: '#fff'
+              }}
+              disabled={isCreating}
+            />
+            {formErrors.place_id && (
+              <p style={{ color: '#e74c3c', fontSize: '14px', marginTop: '5px' }}>
+                {formErrors.place_id}
+              </p>
+            )}
+          </div>
+          
+          <div style={{ display: 'flex', gap: '15px' }}>
+            <button
+              type="submit"
+              disabled={isCreating || !isFormValid}
+              style={{
+                padding: '12px 20px',
+                backgroundColor: isCreating || !isFormValid ? '#95a5a6' : '#3498db',
+                color: 'white',
+                border: 'none',
+                borderRadius: '6px',
+                cursor: isCreating || !isFormValid ? 'not-allowed' : 'pointer',
+                flex: 1,
+                fontWeight: '600',
+                transition: 'background-color 0.2s'
+              }}
+            >
+              {isCreating ? 'Creating...' : 'Create Equipment'}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setShowCreateForm(false);
+                setFormErrors({});
+                setNewEquipment({
+                  name: 'Door',
+                  status: 'active',
+                  place_id: 1
+                });
+              }}
+              disabled={isCreating}
+              style={{
+                padding: '12px 20px',
+                backgroundColor: isCreating ? '#95a5a6' : '#e74c3c',
+                color: 'white',
+                border: 'none',
+                borderRadius: '6px',
+                cursor: isCreating ? 'not-allowed' : 'pointer',
+                flex: 1,
+                fontWeight: '600',
+                transition: 'background-color 0.2s'
+              }}
+            >
+              Cancel
+            </button>
+          </div>
+        </form>
+      </div>
+      
+      Overlay when form is open
+      {showCreateForm && (
+        <div 
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0,0,0,0.5)',
+            zIndex: 999,
+            cursor: 'pointer'
+          }}
+          onClick={() => !isCreating && setShowCreateForm(false)}
+        />
+      )}
+      
       <div style={{
         backgroundColor: '#ffffff',
         borderRadius: '12px',
         boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
-        padding: '30px'
+        padding: '30px',
+        position: 'relative'
       }}>
-        <div style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          marginBottom: '30px'
-        }}>
-          <h2 style={{
-            color: '#2c3e50',
-            fontSize: '24px',
-            fontWeight: '600',
-            margin: 0
-          }}>Equipment Management</h2>
-          <button
-            onClick={() => handleOpenDialog('create')}
-            style={{
-              padding: '10px 20px',
-              backgroundColor: '#3498db',
-              color: 'white',
-              border: 'none',
-              borderRadius: '6px',
-              fontSize: '16px',
-              fontWeight: '500',
-              cursor: 'pointer',
-              transition: 'all 0.3s',
-              ':hover': {
-                backgroundColor: '#2980b9'
-              }
-            }}
-          >
-            Add New Equipment
-          </button>
-        </div>
-
-        <div style={{
-          display: 'flex',
-          gap: '20px'
-        }}>
-          {/* Equipment List */}
+        <h2 style={{
+          color: '#2c3e50',
+          marginBottom: '25px',
+          fontSize: '24px',
+          fontWeight: '600',
+          textAlign: 'center'
+        }}>Equipment Management</h2>
+        
+        {/* Error message display
+        {error && (
           <div style={{
-            flex: '0 0 300px',
-            backgroundColor: '#f8f9fa',
-            borderRadius: '8px',
             padding: '15px',
-            maxHeight: '600px',
-            overflowY: 'auto'
+            backgroundColor: '#fadbd8',
+            color: '#e74c3c',
+            borderRadius: '8px',
+            marginBottom: '20px',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center'
           }}>
-            <h3 style={{
-              color: '#34495e',
-              fontSize: '18px',
-              marginTop: 0,
-              marginBottom: '15px',
-              paddingBottom: '10px',
-              borderBottom: '1px solid #ddd'
-            }}>Equipment List</h3>
+            <p>{error}</p>
+            <button 
+              onClick={() => setError('')}
+              style={{
+                padding: '5px 10px',
+                backgroundColor: '#e74c3c',
+                color: 'white',
+                border: 'none',
+                borderRadius: '4px',
+                cursor: 'pointer'
+              }}
+            >
+              Dismiss
+            </button>
+          </div>
+        )} */}
+        
+        {/* Filter Controls */}
+        <div style={{
+          display: 'flex',
+          flexWrap: 'wrap',
+          gap: '15px',
+          marginBottom: '25px',
+          padding: '20px',
+          backgroundColor: '#f8f9fa',
+          borderRadius: '8px'
+        }}>
+          <div style={{ flex: '1', minWidth: '200px' }}>
+            <label style={{
+              display: 'block',
+              marginBottom: '8px',
+              color: '#2c3e50',
+              fontWeight: '500'
+            }}>Device Type</label>
+            <select
+              name="deviceType"
+              value={filters.deviceType}
+              onChange={handleFilterChange}
+              style={{
+                width: '100%',
+                padding: '10px',
+                borderRadius: '6px',
+                border: '1px solid #ddd',
+                backgroundColor: '#fff'
+              }}
+            >
+              <option value="">All Types</option>
+              <option value="Door">Door</option>
+              <option value="LedLCD">Led/LCD</option>
+              <option value="Light">Light</option>
+            </select>
+          </div>
+          
+          <div style={{ flex: '1', minWidth: '200px' }}>
+            <label style={{
+              display: 'block',
+              marginBottom: '8px',
+              color: '#2c3e50',
+              fontWeight: '500'
+            }}>Room Number</label>
+            <input
+              type="text"
+              name="room"
+              placeholder="Enter room number"
+              value={filters.room}
+              onChange={handleFilterChange}
+              style={{
+                width: '100%',
+                padding: '10px',
+                borderRadius: '6px',
+                border: '1px solid #ddd',
+                backgroundColor: '#fff'
+              }}
+            />
+          </div>
+          
+          <div style={{ flex: '1', minWidth: '200px' }}>
+            <label style={{
+              display: 'block',
+              marginBottom: '8px',
+              color: '#2c3e50',
+              fontWeight: '500'
+            }}>Equipment ID</label>
+            <input
+              type="text"
+              name="id"
+              placeholder="Enter equipment ID"
+              value={filters.id}
+              onChange={handleFilterChange}
+              style={{
+                width: '100%',
+                padding: '10px',
+                borderRadius: '6px',
+                border: '1px solid #ddd',
+                backgroundColor: '#fff'
+              }}
+            />
+          </div>
+        </div>
+        
+        {filteredEquipments.length === 0 ? (
+          <p style={{
+            textAlign: 'center',
+            color: '#7f8c8d',
+            padding: '40px',
+            backgroundColor: '#f8f9fa',
+            borderRadius: '8px'
+          }}>
+            {equipments.length === 0 ? 'No equipment found' : 'No equipment matches your filters'}
+          </p>
+        ) : (
+          <div style={{
+            maxHeight: '400px',
+            overflowY: 'auto',
+            paddingRight: '10px'
+          }}>
             <ul style={{
               listStyle: 'none',
               padding: 0,
               margin: 0
             }}>
-              {equipments.map(equipment => (
-                <li 
-                  key={equipment.id}
-                  onClick={() => {
-                    setSelectedEquipment(equipment);
-                    fetchEquipmentDetails(equipment.id);
-                  }}
-                  style={{
-                    padding: '12px 15px',
-                    marginBottom: '8px',
-                    backgroundColor: selectedEquipment?.id === equipment.id ? '#e3f2fd' : 'white',
-                    borderRadius: '6px',
-                    cursor: 'pointer',
-                    transition: 'all 0.2s',
-                    borderLeft: selectedEquipment?.id === equipment.id ? '4px solid #3498db' : '4px solid transparent',
-                    ':hover': {
-                      backgroundColor: '#e3f2fd'
-                    }
-                  }}
-                >
-                  <div style={{
-                    fontWeight: '500',
-                    color: '#2c3e50',
-                    marginBottom: '5px'
-                  }}>{equipment.name}</div>
-                  <div style={{
-                    color: '#7f8c8d',
-                    fontSize: '14px',
-                    whiteSpace: 'nowrap',
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis'
-                  }}>{equipment.description}</div>
+              {filteredEquipments.map((eq) => (
+                <li key={eq.id} style={{
+                  padding: '15px 20px',
+                  marginBottom: '10px',
+                  backgroundColor: '#ffffff',
+                  borderLeft: '4px solid #3498db',
+                  borderRadius: '4px',
+                  boxShadow: '0 2px 4px rgba(0,0,0,0.05)',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  transition: 'transform 0.2s'
+                }}>
+                  <div style={{ display: 'flex', flexDirection: 'column' }}>
+                    <span style={{
+                      fontWeight: '600',
+                      color: '#2c3e50',
+                      marginBottom: '5px'
+                    }}>{eq.name || 'Unknown'}</span>
+                    <span style={{
+                      color: '#7f8c8d',
+                      fontSize: '14px'
+                    }}>
+                      ID: {eq.id || 'N/A'}
+                    </span>
+                  </div>
+                  <div style={{ display: 'flex', gap: '20px', alignItems: 'center' }}>
+                    <span style={{
+                      color: '#7f8c8d',
+                      fontSize: '14px'
+                    }}>
+                      Room {eq.place_id != null ? eq.place_id : 'N/A'}
+                    </span>
+                    <span style={{
+                      padding: '4px 12px',
+                      borderRadius: '12px',
+                      fontSize: '14px',
+                      backgroundColor: 
+                        eq.status === 'active' ? '#e6f7ee' :
+                        eq.status === 'inactive' ? '#f5f5f5' :
+                        eq.status === 'maintenance' ? '#fff8e6' : '#ffebee',
+                      color: 
+                        eq.status === 'active' ? '#00a854' :
+                        eq.status === 'inactive' ? '#757575' :
+                        eq.status === 'maintenance' ? '#ffa000' : '#f44336'
+                    }}>
+                      {eq.status ? eq.status.charAt(0).toUpperCase() + eq.status.slice(1) : 'Unknown'}
+                    </span>
+                  </div>
                 </li>
               ))}
             </ul>
           </div>
-
-          {/* Equipment Details */}
-          <div style={{
-            flex: 1,
-            backgroundColor: '#ffffff',
-            borderRadius: '8px',
-            padding: '20px',
-            boxShadow: '0 2px 8px rgba(0,0,0,0.05)'
-          }}>
-            {selectedEquipment ? (
-              <>
-                <div style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  marginBottom: '20px',
-                  paddingBottom: '15px',
-                  borderBottom: '1px solid #eee'
-                }}>
-                  <h3 style={{
-                    color: '#2c3e50',
-                    fontSize: '20px',
-                    margin: 0
-                  }}>{selectedEquipment.name}</h3>
-                  <div>
-                    <button
-                      onClick={() => handleOpenDialog('edit', selectedEquipment)}
-                      style={{
-                        padding: '8px 15px',
-                        backgroundColor: '#f39c12',
-                        color: 'white',
-                        border: 'none',
-                        borderRadius: '4px',
-                        fontSize: '14px',
-                        marginRight: '10px',
-                        cursor: 'pointer',
-                        transition: 'all 0.3s',
-                        ':hover': {
-                          backgroundColor: '#e67e22'
-                        }
-                      }}
-                    >
-                      Edit
-                    </button>
-                    <button
-                      onClick={() => handleDeleteEquipment(selectedEquipment.id)}
-                      style={{
-                        padding: '8px 15px',
-                        backgroundColor: '#e74c3c',
-                        color: 'white',
-                        border: 'none',
-                        borderRadius: '4px',
-                        fontSize: '14px',
-                        cursor: 'pointer',
-                        transition: 'all 0.3s',
-                        ':hover': {
-                          backgroundColor: '#c0392b'
-                        }
-                      }}
-                    >
-                      Delete
-                    </button>
-                  </div>
-                </div>
-
-                <p style={{
-                  color: '#7f8c8d',
-                  marginBottom: '25px'
-                }}>{selectedEquipment.description}</p>
-
-                {/* Tabs */}
-                <div style={{
-                  display: 'flex',
-                  borderBottom: '1px solid #ddd',
-                  marginBottom: '20px'
-                }}>
-                  {['LED/LCDs', 'Lights', 'Doors'].map((tab, index) => (
-                    <button
-                      key={tab}
-                      onClick={() => setActiveTab(index)}
-                      style={{
-                        padding: '10px 20px',
-                        backgroundColor: activeTab === index ? '#3498db' : 'transparent',
-                        color: activeTab === index ? 'white' : '#7f8c8d',
-                        border: 'none',
-                        cursor: 'pointer',
-                        fontSize: '15px',
-                        fontWeight: '500',
-                        transition: 'all 0.3s',
-                        borderRadius: '4px 4px 0 0',
-                        marginRight: '5px'
-                      }}
-                    >
-                      {tab}
-                    </button>
-                  ))}
-                </div>
-
-                {/* Tab Content */}
-                <div>
-                  {activeTab === 0 && (
-                    <div>
-                      <h4 style={{
-                        color: '#34495e',
-                        marginTop: 0,
-                        marginBottom: '15px'
-                      }}>LED/LCD Panels</h4>
-                      {ledLcds.length > 0 ? (
-                        <ul style={{
-                          listStyle: 'none',
-                          padding: 0,
-                          margin: 0,
-                          display: 'grid',
-                          gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))',
-                          gap: '15px'
-                        }}>
-                          {ledLcds.map(device => (
-                            <li key={device.id} style={{
-                              backgroundColor: '#f8f9fa',
-                              padding: '15px',
-                              borderRadius: '6px',
-                              borderLeft: '3px solid #3498db'
-                            }}>
-                              <div style={{
-                                fontWeight: '500',
-                                marginBottom: '5px'
-                              }}>ID: {device.id}</div>
-                              <div style={{
-                                color: '#7f8c8d',
-                                fontSize: '14px'
-                              }}>Status: {device.status}</div>
-                            </li>
-                          ))}
-                        </ul>
-                      ) : (
-                        <p style={{ color: '#95a5a6' }}>No LED/LCD devices found</p>
-                      )}
-                    </div>
-                  )}
-
-                  {activeTab === 1 && (
-                    <div>
-                      <h4 style={{
-                        color: '#34495e',
-                        marginTop: 0,
-                        marginBottom: '15px'
-                      }}>Lighting Controls</h4>
-                      {lights.length > 0 ? (
-                        <ul style={{
-                          listStyle: 'none',
-                          padding: 0,
-                          margin: 0,
-                          display: 'grid',
-                          gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))',
-                          gap: '15px'
-                        }}>
-                          {lights.map(device => (
-                            <li key={device.id} style={{
-                              backgroundColor: '#f8f9fa',
-                              padding: '15px',
-                              borderRadius: '6px',
-                              borderLeft: '3px solid #f39c12'
-                            }}>
-                              <div style={{
-                                fontWeight: '500',
-                                marginBottom: '5px'
-                              }}>ID: {device.id}</div>
-                              <div style={{
-                                color: '#7f8c8d',
-                                fontSize: '14px'
-                              }}>Status: {device.status}</div>
-                            </li>
-                          ))}
-                        </ul>
-                      ) : (
-                        <p style={{ color: '#95a5a6' }}>No lighting devices found</p>
-                      )}
-                    </div>
-                  )}
-
-                  {activeTab === 2 && (
-                    <div>
-                      <h4 style={{
-                        color: '#34495e',
-                        marginTop: 0,
-                        marginBottom: '15px'
-                      }}>Door Controls</h4>
-                      {doors.length > 0 ? (
-                        <ul style={{
-                          listStyle: 'none',
-                          padding: 0,
-                          margin: 0,
-                          display: 'grid',
-                          gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))',
-                          gap: '15px'
-                        }}>
-                          {doors.map(device => (
-                            <li key={device.id} style={{
-                              backgroundColor: '#f8f9fa',
-                              padding: '15px',
-                              borderRadius: '6px',
-                              borderLeft: '3px solid #e74c3c'
-                            }}>
-                              <div style={{
-                                fontWeight: '500',
-                                marginBottom: '5px'
-                              }}>ID: {device.id}</div>
-                              <div style={{
-                                color: '#7f8c8d',
-                                fontSize: '14px'
-                              }}>Status: {device.status}</div>
-                            </li>
-                          ))}
-                        </ul>
-                      ) : (
-                        <p style={{ color: '#95a5a6' }}>No door devices found</p>
-                      )}
-                    </div>
-                  )}
-                </div>
-              </>
-            ) : (
-              <div style={{
-                display: 'flex',
-                justifyContent: 'center',
-                alignItems: 'center',
-                height: '300px',
-                color: '#95a5a6',
-                fontSize: '18px'
-              }}>
-                Select an equipment to view details
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* Snackbar */}
-      {snackbar.open && (
+        )}
+        
+        {/* Create Button */}
         <div style={{
-          position: 'fixed',
-          bottom: '20px',
-          right: '20px',
-          padding: '15px 25px',
-          backgroundColor: snackbar.severity === 'success' ? '#27ae60' : '#e74c3c',
-          color: 'white',
-          borderRadius: '6px',
-          boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-          zIndex: 1000,
-          animation: 'fadeIn 0.3s'
-        }}>
-          {snackbar.message}
-        </div>
-      )}
-
-      {/* Add/Edit Dialog */}
-      {openDialog && (
-        <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          backgroundColor: 'rgba(0,0,0,0.5)',
           display: 'flex',
           justifyContent: 'center',
-          alignItems: 'center',
-          zIndex: 1000
+          marginTop: '30px'
         }}>
-          <div style={{
-            backgroundColor: 'white',
-            borderRadius: '8px',
-            padding: '30px',
-            width: '100%',
-            maxWidth: '500px',
-            boxShadow: '0 5px 15px rgba(0,0,0,0.3)'
-          }}>
-            <h3 style={{
-              marginTop: 0,
-              color: '#2c3e50',
-              fontSize: '20px',
-              marginBottom: '25px'
-            }}>
-              {dialogType === 'create' ? 'Add New Equipment' : 'Edit Equipment'}
-            </h3>
-            
-            <div style={{ marginBottom: '20px' }}>
-              <label style={{
-                display: 'block',
-                marginBottom: '8px',
-                color: '#7f8c8d',
-                fontSize: '14px'
-              }}>Name</label>
-              <input
-                type="text"
-                name="name"
-                value={formData.name}
-                onChange={handleInputChange}
-                style={{
-                  width: '100%',
-                  padding: '10px 15px',
-                  border: '1px solid #ddd',
-                  borderRadius: '4px',
-                  fontSize: '16px'
-                }}
-              />
-            </div>
-            
-            <div style={{ marginBottom: '30px' }}>
-              <label style={{
-                display: 'block',
-                marginBottom: '8px',
-                color: '#7f8c8d',
-                fontSize: '14px'
-              }}>Description</label>
-              <textarea
-                name="description"
-                value={formData.description}
-                onChange={handleInputChange}
-                style={{
-                  width: '100%',
-                  padding: '10px 15px',
-                  border: '1px solid #ddd',
-                  borderRadius: '4px',
-                  fontSize: '16px',
-                  minHeight: '100px'
-                }}
-              />
-            </div>
-            
-            <div style={{
-              display: 'flex',
-              justifyContent: 'flex-end',
-              gap: '15px'
-            }}>
-              <button
-                onClick={handleCloseDialog}
-                style={{
-                  padding: '10px 20px',
-                  backgroundColor: '#f8f9fa',
-                  color: '#2c3e50',
-                  border: '1px solid #ddd',
-                  borderRadius: '4px',
-                  cursor: 'pointer',
-                  transition: 'all 0.3s',
-                  ':hover': {
-                    backgroundColor: '#e8e8e8'
-                  }
-                }}
-              >
-                Cancel
-              </button>
-              <button
-                onClick={dialogType === 'create' ? handleCreateEquipment : handleUpdateEquipment}
-                style={{
-                  padding: '10px 20px',
-                  backgroundColor: '#3498db',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '4px',
-                  cursor: 'pointer',
-                  transition: 'all 0.3s',
-                  ':hover': {
-                    backgroundColor: '#2980b9'
-                  }
-                }}
-              >
-                {dialogType === 'create' ? 'Create' : 'Update'}
-              </button>
-            </div>
-          </div>
+          <button
+            onClick={() => setShowCreateForm(true)}
+            disabled={!token}
+            style={{
+              padding: '12px 30px',
+              backgroundColor: !token ? '#95a5a6' : '#2ecc71',
+              color: 'white',
+              border: 'none',
+              borderRadius: '6px',
+              cursor: !token ? 'not-allowed' : 'pointer',
+              fontWeight: '600',
+              fontSize: '16px',
+              boxShadow: '0 2px 10px rgba(46, 204, 113, 0.3)',
+              transition: 'background-color 0.2s, transform 0.2s, box-shadow 0.2s'
+            }}
+          >
+            + Add New Equipment
+          </button>
         </div>
-      )}
+      </div>
     </div>
   );
 };
