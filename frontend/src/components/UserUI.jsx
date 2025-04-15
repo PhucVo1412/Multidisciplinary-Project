@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import axios from 'axios';
 import LogoutIcon from '@mui/icons-material/Logout';
 import MenuIcon from '@mui/icons-material/Menu';
 import CloseIcon from '@mui/icons-material/Close';
@@ -6,14 +7,41 @@ import Action from './Action';
 import UserManagement from './UserManagement';
 import ActionLog from './ActionLog';
 import EquipmentManagement from './EquipmentManagement';
+import AdminManagement from './AdminManagement'; // Make sure to create this component
+
+const API_BASE_URL = 'http://localhost:5000';
 
 const UserUI = ({ setIsLoggedIn }) => {
   const [currentTime, setCurrentTime] = useState(new Date().toLocaleTimeString());
   const [currentComponent, setCurrentComponent] = useState('dashboard');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [userInfo, setUserInfo] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const token = localStorage.getItem('access_token');
+
+  useEffect(() => {
+    const fetchUserInfo = async () => {
+      try {
+        const response = await axios.get(`${API_BASE_URL}/me`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+        });
+        setUserInfo(response.data);
+      } catch (err) {
+        setError(err.response?.data?.message || 'Failed to fetch user information');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchUserInfo();
+  }, [token]);
 
   const handleLogout = () => {
-    localStorage.removeItem('token');
+    localStorage.removeItem('access_token');
     setIsLoggedIn(false);
   };
 
@@ -40,10 +68,55 @@ const UserUI = ({ setIsLoggedIn }) => {
         return <ActionLog />;
       case 'equipment':
         return <EquipmentManagement />;
+      case 'adminManagement':
+        return <AdminManagement />;
       default:
-        return <h2 style={{ padding: '20px', color: '#333' }}>Welcome to the User Dashboard</h2>;
+        return <h2 style={{ padding: '20px', color: '#333' }}>Welcome to the Dashboard</h2>;
     }
   };
+
+  // Navigation items - base items for all users
+  const navItems = [
+    { label: 'Action', key: 'action' },
+    { label: 'Action Log', key: 'actionLog' },
+    { label: 'Equipment Management', key: 'equipment' },
+    { label: 'User Management', key: 'userManagement' }
+  ];
+
+  // Add admin-specific items if user is admin
+  if (userInfo?.type === 'admin') {
+    navItems.push(
+      { label: 'Admin Management', key: 'adminManagement' }
+    );
+  }
+
+  if (loading) {
+    return (
+      <div style={{ 
+        display: 'flex', 
+        justifyContent: 'center', 
+        alignItems: 'center', 
+        height: '100vh' 
+      }}>
+        Loading user information...
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div style={{ 
+        padding: '20px', 
+        backgroundColor: '#fadbd8', 
+        color: '#e74c3c', 
+        borderRadius: '8px', 
+        margin: '20px', 
+        textAlign: 'center' 
+      }}>
+        {error}
+      </div>
+    );
+  }
 
   return (
     <div style={{ display: 'flex', minHeight: '100vh', backgroundColor: '#f5f5f5' }}>
@@ -69,16 +142,11 @@ const UserUI = ({ setIsLoggedIn }) => {
             marginBottom: '10px',
             letterSpacing: '0.5px'
           }}>
-            Dashboard
+            {userInfo?.type === 'admin' ? 'Admin Dashboard' : 'User Dashboard'}
           </div>
           
           {/* Navigation Buttons */}
-          {[
-            { label: 'Action', key: 'action' },
-            { label: 'User Management', key: 'userManagement' },
-            { label: 'Action Log', key: 'actionLog' },
-            { label: 'Equipment Management', key: 'equipment' },
-          ].map(({ label, key }) => (
+          {navItems.map(({ label, key }) => (
             <button
               key={key}
               onClick={() => handleButtonClick(key)}
@@ -97,7 +165,7 @@ const UserUI = ({ setIsLoggedIn }) => {
                 transition: 'all 0.3s ease',
                 boxShadow: '0 2px 5px rgba(0,0,0,0.1)',
                 ':hover': {
-                  backgroundColor: currentComponent === key ? '#2980b9' : '#2c3e50',
+                  backgroundColor: currentComponent === key ? '#ff7e33' : 'rgba(255,255,255,0.25)',
                   transform: 'translateX(5px)'
                 }
               }}
@@ -140,31 +208,44 @@ const UserUI = ({ setIsLoggedIn }) => {
             >
               {isSidebarOpen ? <CloseIcon /> : <MenuIcon />}
             </button>
-            <h1 style={{ margin: 0, fontSize: '24px' }}>User Dashboard</h1>
+            <h1 style={{ margin: 0, fontSize: '24px' }}>
+              {userInfo?.type === 'admin' ? 'Admin Dashboard' : 'User Dashboard'}
+            </h1>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
             <span style={{ fontSize: '16px' }}>{currentTime}</span>
-            <button
-              onClick={handleLogout}
-              style={{
-                backgroundColor: '#e74c3c',
-                color: 'white',
-                border: 'none',
-                padding: '8px 15px',
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <span style={{ fontWeight: 'bold' }}>{userInfo?.name || 'User'}</span>
+              <span style={{ 
+                backgroundColor: userInfo?.type === 'admin' ? '#e74c3c' : '#2ecc71',
+                padding: '4px 8px',
                 borderRadius: '4px',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '5px',
-                transition: 'background-color 0.3s',
-                ':hover': {
-                  backgroundColor: '#c0392b'
-                }
-              }}
-            >
-              <LogoutIcon fontSize="small" />
-              <span>Logout</span>
-            </button>
+                fontSize: '12px'
+              }}>
+                {userInfo?.type === 'admin' ? 'ADMIN' : 'USER'}
+              </span>
+              <button
+                onClick={handleLogout}
+                style={{
+                  backgroundColor: '#e74c3c',
+                  color: 'white',
+                  border: 'none',
+                  padding: '8px 15px',
+                  borderRadius: '4px',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '5px',
+                  transition: 'background-color 0.3s',
+                  ':hover': {
+                    backgroundColor: '#c0392b'
+                  }
+                }}
+              >
+                <LogoutIcon fontSize="small" />
+                <span>Logout</span>
+              </button>
+            </div>
           </div>
         </header>
 

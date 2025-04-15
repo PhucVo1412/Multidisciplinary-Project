@@ -77,7 +77,7 @@ const Login = ({ setIsLoggedIn }) => {
       fontSize: '0.9rem',
     },
     message: {
-      color: '#e53e3e',
+      color: '#grey',
       marginTop: '1rem',
       fontWeight: '500',
     },
