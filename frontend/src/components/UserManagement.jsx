@@ -9,6 +9,8 @@ const UserManagement = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [editForm, setEditForm] = useState({});
   const [successMessage, setSuccessMessage] = useState('');
+  const [face, setFace] = useState([])
+
 
   const API_BASE_URL = 'http://localhost:5000';
   const token = localStorage.getItem('access_token');
@@ -46,6 +48,27 @@ const UserManagement = () => {
     fetchInfo();
   }, [isEditing]);
 
+  useEffect(() => {
+    const fetchFace = async () => {
+      if (!token) {
+        setError('Please log in to view your user information.');
+        setLoading(false);
+        return;
+      }
+      const response = await axios.get(`${API_BASE_URL}/face_identity`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      setFace(response.data);
+      setError('');
+    };
+    fetchFace();
+  }, [isEditing]);
+
+  
   const handleEditClick = () => {
     setIsEditing(true);
     setSuccessMessage('');

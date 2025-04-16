@@ -21,7 +21,12 @@ const UserUI = ({ setIsLoggedIn }) => {
   const token = localStorage.getItem('access_token');
 
   useEffect(() => {
+    let isMounted = true; // Track if component is mounted
+    let intervalId = null;
+  
     const fetchUserInfo = async () => {
+      if (!token || !isMounted) return;
+      
       try {
         const response = await axios.get(`${API_BASE_URL}/me`, {
           headers: {
@@ -29,15 +34,33 @@ const UserUI = ({ setIsLoggedIn }) => {
             'Content-Type': 'application/json',
           },
         });
-        setUserInfo(response.data);
+        
+        if (isMounted) {
+          setUserInfo(response.data);
+          setError(null);
+        }
       } catch (err) {
-        setError(err.response?.data?.message || 'Failed to fetch user information');
+        if (isMounted) {
+          setError(err.response?.data?.message || 'Failed to fetch user information');
+        }
       } finally {
-        setLoading(false);
+        if (isMounted) {
+          setLoading(false);
+        }
       }
     };
-
+  
+    // Initial fetch
     fetchUserInfo();
+  
+    // Set up polling
+    intervalId = setInterval(fetchUserInfo, 1000);
+  
+    // Cleanup function
+    return () => {
+      isMounted = false;
+      if (intervalId) clearInterval(intervalId);
+    };
   }, [token]);
 
   const handleLogout = () => {
@@ -215,7 +238,7 @@ const UserUI = ({ setIsLoggedIn }) => {
           <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
             <span style={{ fontSize: '16px' }}>{currentTime}</span>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <span style={{ fontWeight: 'bold' }}>{userInfo?.name || 'User'}</span>
+              <span style={{ fontWeight: 'bold' }}>{userInfo?.name || 'New User'}</span>
               <span style={{ 
                 backgroundColor: userInfo?.type === 'admin' ? '#e74c3c' : '#2ecc71',
                 padding: '4px 8px',

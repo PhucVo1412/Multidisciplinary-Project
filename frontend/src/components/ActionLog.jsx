@@ -74,7 +74,14 @@ const ActionLog = () => {
     }
     
     if (selectedDeviceId) {
-      filtered = filtered.filter(record => record.device_id === selectedDeviceId);
+      // Compare as numbers if possible
+      filtered = filtered.filter(record => {
+        const recordId = typeof record.device_id === 'number' ? 
+          record.device_id : 
+          parseInt(record.device_id, 10);
+        const filterId = parseInt(selectedDeviceId, 10);
+        return recordId === filterId;
+      });
     }
     
     setFilteredRecords(filtered);

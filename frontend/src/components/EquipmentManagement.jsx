@@ -7,19 +7,29 @@ const EquipmentManagement = () => {
   // State management
   const [equipments, setEquipments] = useState([]);
   const [filteredEquipments, setFilteredEquipments] = useState([]);
+  const [places, setPlaces] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [isCreating, setIsCreating] = useState(false);
-  const [deletingId, setDeletingId] = useState(null); // Track which equipment is being deleted
+  const [deletingId, setDeletingId] = useState(null);
+  
+  // New place creation states
+  const [showCreatePlaceForm, setShowCreatePlaceForm] = useState(false);
+  const [newPlace, setNewPlace] = useState({
+    room: '',
+    address: ''
+  });
+  const [placeFormErrors, setPlaceFormErrors] = useState({});
+  const [isCreatingPlace, setIsCreatingPlace] = useState(false);
   
   // Filter states
   const [filters, setFilters] = useState({
     deviceType: '',
     room: '',
-    id: ''
+    address: ''
   });
   
-  // Create form states
+  // Create equipment form states
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [newEquipment, setNewEquipment] = useState({
     name: 'Door',
@@ -30,11 +40,12 @@ const EquipmentManagement = () => {
   
   const token = localStorage.getItem('access_token');
 
-  // Fetch equipment data
+  
+  // Fetch equipment and places data
   useEffect(() => {
     let isMounted = true;
     
-    const fetchEquipments = async () => {
+    const fetchData = async () => {
       if (!token) {
         if (isMounted) {
           setError('Please log in to view equipment');
@@ -44,13 +55,20 @@ const EquipmentManagement = () => {
       }
 
       try {
-        const response = await axios.get(`${API_BASE_URL}/equipment`, {
+        const placesResponse = await axios.get(`${API_BASE_URL}/places`, {
           headers: { Authorization: `Bearer ${token}` },
         });
         
         if (isMounted) {
-          const data = Array.isArray(response.data) ? response.data : [];
-          // Sort by ID in descending order to show newest first
+          setPlaces(Array.isArray(placesResponse.data) ? placesResponse.data : []);
+        }
+
+        const equipmentResponse = await axios.get(`${API_BASE_URL}/equipment`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        
+        if (isMounted) {
+          const data = Array.isArray(equipmentResponse.data) ? equipmentResponse.data : [];
           const sortedData = data.sort((a, b) => b.id - a.id);
           setEquipments(sortedData);
           setFilteredEquipments(sortedData);
@@ -58,7 +76,7 @@ const EquipmentManagement = () => {
         }
       } catch (err) {
         if (isMounted) {
-          setError(err.response?.data?.message || 'Failed to fetch equipment');
+          setError(err.response?.data?.message || 'Failed to fetch data');
         }
       } finally {
         if (isMounted) {
@@ -67,34 +85,43 @@ const EquipmentManagement = () => {
       }
     };
 
-    fetchEquipments();
+    fetchData();
     
     return () => {
       isMounted = false;
     };
-  }, [isCreating]);
+  }, [isCreating, isCreatingPlace]);
 
   // Apply filters
   useEffect(() => {
     const filtered = equipments.filter(equipment => {
       if (!equipment) return false;
+      
       if (filters.deviceType && 
           !equipment.name?.toLowerCase().includes(filters.deviceType.toLowerCase())) {
         return false;
       }
+      
       if (filters.room && 
           equipment.place_id?.toString() !== filters.room) {
         return false;
       }
-      if (filters.id && 
-          !equipment.id?.toString().includes(filters.id)) {
-        return false;
+      
+      if (filters.address) {
+        const place = places.find(p => p.id === equipment.place_id);
+        if (!place || !place.address?.toLowerCase().includes(filters.address.toLowerCase())) {
+          return false;
+        }
       }
+      
       return true;
     });
     
     setFilteredEquipments(filtered);
-  }, [filters, equipments]);
+  }, [filters, equipments, places]);
+
+  // Get unique addresses for the address filter
+  const uniqueAddresses = [...new Set(places.map(place => place.address))].filter(Boolean);
 
   // Handle filter changes
   const handleFilterChange = (e) => {
@@ -105,7 +132,7 @@ const EquipmentManagement = () => {
     }));
   };
 
-  // Handle input changes in create form
+  // Handle input changes in create equipment form
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setNewEquipment(prev => ({
@@ -115,7 +142,17 @@ const EquipmentManagement = () => {
     setFormErrors(prev => ({ ...prev, [name]: '' }));
   };
 
-  // Handle create form submission
+  // Handle input changes in create place form
+  const handlePlaceInputChange = (e) => {
+    const { name, value } = e.target;
+    setNewPlace(prev => ({
+      ...prev,
+      [name]: value
+    }));
+    setPlaceFormErrors(prev => ({ ...prev, [name]: '' }));
+  };
+
+  // Handle create equipment form submission
   const handleCreateSubmit = async (e) => {
     e.preventDefault();
     
@@ -125,12 +162,11 @@ const EquipmentManagement = () => {
       return;
     }
     
-    // Validate form
     const errors = {};
     if (!newEquipment.name) errors.name = 'Device type is required';
     if (!newEquipment.status) errors.status = 'Status is required';
     if (newEquipment.place_id === '' || isNaN(newEquipment.place_id) || newEquipment.place_id <= 0) {
-      errors.place_id = 'Valid positive room number is required';
+      errors.place_id = 'Valid room selection is required';
     }
     
     if (Object.keys(errors).length > 0) {
@@ -154,7 +190,6 @@ const EquipmentManagement = () => {
         throw new Error('Invalid equipment data returned from server');
       }
       
-      // Add new equipment at the beginning of the list
       setEquipments(prev => [response.data, ...prev]);
       setError('');
       
@@ -170,6 +205,57 @@ const EquipmentManagement = () => {
       setError(err.response?.data?.message || 'Failed to create equipment');
     } finally {
       setIsCreating(false);
+    }
+  };
+
+  // Handle create place form submission
+  const handleCreatePlaceSubmit = async (e) => {
+    e.preventDefault();
+    
+    if (!token) {
+      setError('Please log in to create a place');
+      setShowCreatePlaceForm(false);
+      return;
+    }
+    
+    const errors = {};
+    if (!newPlace.room) errors.room = 'Room name is required';
+    if (!newPlace.address) errors.address = 'Address is required';
+    
+    if (Object.keys(errors).length > 0) {
+      setPlaceFormErrors(errors);
+      return;
+    }
+    
+    try {
+      setIsCreatingPlace(true);
+      const payload = {
+        room: newPlace.room,
+        address: newPlace.address
+      };
+      
+      const response = await axios.post(`${API_BASE_URL}/places`, payload, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      
+      if (!response.data || !response.data.id || !response.data.room || !response.data.address) {
+        throw new Error('Invalid place data returned from server');
+      }
+      
+      setPlaces(prev => [response.data, ...prev]);
+      setError('');
+      
+      setNewPlace({
+        room: '',
+        address: ''
+      });
+      setShowCreatePlaceForm(false);
+      setPlaceFormErrors({});
+    } catch (err) {
+      console.error('Place creation error:', err);
+      setError(err.response?.data?.message || 'Failed to create place');
+    } finally {
+      setIsCreatingPlace(false);
     }
   };
 
@@ -190,7 +276,6 @@ const EquipmentManagement = () => {
         headers: { Authorization: `Bearer ${token}` },
       });
 
-      // Remove the deleted equipment from the state
       setEquipments(prev => prev.filter(equipment => equipment.id !== id));
       setError('');
     } catch (err) {
@@ -218,8 +303,9 @@ const EquipmentManagement = () => {
     );
   }
 
-  // Check if form is valid
-  const isFormValid = newEquipment.name && newEquipment.status && newEquipment.place_id !== '' && !isNaN(newEquipment.place_id) && newEquipment.place_id > 0;
+  // Check if forms are valid
+  const isEquipmentFormValid = newEquipment.name && newEquipment.status && newEquipment.place_id !== '' && !isNaN(newEquipment.place_id) && newEquipment.place_id > 0;
+  const isPlaceFormValid = newPlace.room && newPlace.address;
 
   return (
     <div style={{
@@ -228,7 +314,7 @@ const EquipmentManagement = () => {
       padding: '30px',
       position: 'relative'
     }}>
-      {/* Slide-out Create Form */}
+      {/* Slide-out Create Equipment Form */}
       <div style={{
         position: 'fixed',
         top: 0,
@@ -318,13 +404,11 @@ const EquipmentManagement = () => {
               marginBottom: '8px',
               color: '#2c3e50',
               fontWeight: '500'
-            }}>Room Number</label>
-            <input
-              type="number"
+            }}>Room</label>
+            <select
               name="place_id"
               value={newEquipment.place_id}
               onChange={handleInputChange}
-              min="1"
               style={{
                 width: '100%',
                 padding: '10px',
@@ -333,7 +417,14 @@ const EquipmentManagement = () => {
                 backgroundColor: '#fff'
               }}
               disabled={isCreating}
-            />
+            >
+              <option value="">Select a room</option>
+              {places.map(place => (
+                <option key={place.id} value={place.id}>
+                  {place.room} - {place.address}
+                </option>
+              ))}
+            </select>
             {formErrors.place_id && (
               <p style={{ color: '#e74c3c', fontSize: '14px', marginTop: '5px' }}>
                 {formErrors.place_id}
@@ -344,14 +435,14 @@ const EquipmentManagement = () => {
           <div style={{ display: 'flex', gap: '15px' }}>
             <button
               type="submit"
-              disabled={isCreating || !isFormValid}
+              disabled={isCreating || !isEquipmentFormValid}
               style={{
                 padding: '12px 20px',
-                backgroundColor: isCreating || !isFormValid ? '#95a5a6' : '#3498db',
+                backgroundColor: isCreating || !isEquipmentFormValid ? '#95a5a6' : '#3498db',
                 color: 'white',
                 border: 'none',
                 borderRadius: '6px',
-                cursor: isCreating || !isFormValid ? 'not-allowed' : 'pointer',
+                cursor: isCreating || !isEquipmentFormValid ? 'not-allowed' : 'pointer',
                 flex: 1,
                 fontWeight: '600',
                 transition: 'background-color 0.2s'
@@ -389,8 +480,135 @@ const EquipmentManagement = () => {
         </form>
       </div>
       
-      {/* Overlay when form is open */}
-      {showCreateForm && (
+      {/* Slide-out Create Place Form */}
+      <div style={{
+        position: 'fixed',
+        top: 0,
+        right: showCreatePlaceForm ? 0 : '-500px',
+        width: '400px',
+        height: '100vh',
+        backgroundColor: '#ffffff',
+        boxShadow: '-4px 0 15px rgba(0,0,0,0.1)',
+        transition: 'right 0.3s ease-in-out',
+        zIndex: 1000,
+        padding: '30px',
+        overflowY: 'auto'
+      }}>
+        <h3 style={{
+          color: '#2c3e50',
+          marginBottom: '25px',
+          fontSize: '20px',
+          fontWeight: '600'
+        }}>Add New Place</h3>
+        
+        <form onSubmit={handleCreatePlaceSubmit}>
+          <div style={{ marginBottom: '20px' }}>
+            <label style={{
+              display: 'block',
+              marginBottom: '8px',
+              color: '#2c3e50',
+              fontWeight: '500'
+            }}>Room Name</label>
+            <input
+              type="text"
+              name="room"
+              value={newPlace.room}
+              onChange={handlePlaceInputChange}
+              style={{
+                width: '100%',
+                padding: '10px',
+                borderRadius: '6px',
+                border: placeFormErrors.room ? '1px solid #e74c3c' : '1px solid #ddd',
+                backgroundColor: '#fff'
+              }}
+              disabled={isCreatingPlace}
+              placeholder="e.g., Room 101"
+            />
+            {placeFormErrors.room && (
+              <p style={{ color: '#e74c3c', fontSize: '14px', marginTop: '5px' }}>
+                {placeFormErrors.room}
+              </p>
+            )}
+          </div>
+          
+          <div style={{ marginBottom: '30px' }}>
+            <label style={{
+              display: 'block',
+              marginBottom: '8px',
+              color: '#2c3e50',
+              fontWeight: '500'
+            }}>Address</label>
+            <input
+              type="text"
+              name="address"
+              value={newPlace.address}
+              onChange={handlePlaceInputChange}
+              style={{
+                width: '100%',
+                padding: '10px',
+                borderRadius: '6px',
+                border: placeFormErrors.address ? '1px solid #e74c3c' : '1px solid #ddd',
+                backgroundColor: '#fff'
+              }}
+              disabled={isCreatingPlace}
+              placeholder="e.g., 123 Main St"
+            />
+            {placeFormErrors.address && (
+              <p style={{ color: '#e74c3c', fontSize: '14px', marginTop: '5px' }}>
+                {placeFormErrors.address}
+              </p>
+            )}
+          </div>
+          
+          <div style={{ display: 'flex', gap: '15px' }}>
+            <button
+              type="submit"
+              disabled={isCreatingPlace || !isPlaceFormValid}
+              style={{
+                padding: '12px 20px',
+                backgroundColor: isCreatingPlace || !isPlaceFormValid ? '#95a5a6' : '#3498db',
+                color: 'white',
+                border: 'none',
+                borderRadius: '6px',
+                cursor: isCreatingPlace || !isPlaceFormValid ? 'not-allowed' : 'pointer',
+                flex: 1,
+                fontWeight: '600',
+                transition: 'background-color 0.2s'
+              }}
+            >
+              {isCreatingPlace ? 'Creating...' : 'Create Place'}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setShowCreatePlaceForm(false);
+                setPlaceFormErrors({});
+                setNewPlace({
+                  room: '',
+                  address: ''
+                });
+              }}
+              disabled={isCreatingPlace}
+              style={{
+                padding: '12px 20px',
+                backgroundColor: isCreatingPlace ? '#95a5a6' : '#e74c3c',
+                color: 'white',
+                border: 'none',
+                borderRadius: '6px',
+                cursor: isCreatingPlace ? 'not-allowed' : 'pointer',
+                flex: 1,
+                fontWeight: '600',
+                transition: 'background-color 0.2s'
+              }}
+            >
+              Cancel
+            </button>
+          </div>
+        </form>
+      </div>
+      
+      {/* Overlay when either form is open */}
+      {(showCreateForm || showCreatePlaceForm) && (
         <div 
           style={{
             position: 'fixed',
@@ -402,7 +620,25 @@ const EquipmentManagement = () => {
             zIndex: 999,
             cursor: 'pointer'
           }}
-          onClick={() => !isCreating && setShowCreateForm(false)}
+          onClick={() => {
+            if (!isCreating) {
+              setShowCreateForm(false);
+              setFormErrors({});
+              setNewEquipment({
+                name: 'Door',
+                status: 'active',
+                place_id: 1
+              });
+            }
+            if (!isCreatingPlace) {
+              setShowCreatePlaceForm(false);
+              setPlaceFormErrors({});
+              setNewPlace({
+                room: '',
+                address: ''
+              });
+            }
+          }}
         />
       )}
       
@@ -463,11 +699,9 @@ const EquipmentManagement = () => {
               marginBottom: '8px',
               color: '#2c3e50',
               fontWeight: '500'
-            }}>Room Number</label>
-            <input
-              type="text"
+            }}>Room</label>
+            <select
               name="room"
-              placeholder="Enter room number"
               value={filters.room}
               onChange={handleFilterChange}
               style={{
@@ -477,7 +711,14 @@ const EquipmentManagement = () => {
                 border: '1px solid #ddd',
                 backgroundColor: '#fff'
               }}
-            />
+            >
+              <option value="">All Rooms</option>
+              {places.map(place => (
+                <option key={place.id} value={place.id}>
+                  {place.room}
+                </option>
+              ))}
+            </select>
           </div>
           
           <div style={{ flex: '1', minWidth: '200px' }}>
@@ -486,12 +727,10 @@ const EquipmentManagement = () => {
               marginBottom: '8px',
               color: '#2c3e50',
               fontWeight: '500'
-            }}>Equipment ID</label>
-            <input
-              type="text"
-              name="id"
-              placeholder="Enter equipment ID"
-              value={filters.id}
+            }}>Address</label>
+            <select
+              name="address"
+              value={filters.address}
               onChange={handleFilterChange}
               style={{
                 width: '100%',
@@ -500,7 +739,14 @@ const EquipmentManagement = () => {
                 border: '1px solid #ddd',
                 backgroundColor: '#fff'
               }}
-            />
+            >
+              <option value="">All Addresses</option>
+              {uniqueAddresses.map((address, index) => (
+                <option key={index} value={address}>
+                  {address}
+                </option>
+              ))}
+            </select>
           </div>
         </div>
         
@@ -525,83 +771,98 @@ const EquipmentManagement = () => {
               padding: 0,
               margin: 0
             }}>
-              {filteredEquipments.map((eq) => (
-                <li key={eq.id} style={{
-                  padding: '15px 20px',
-                  marginBottom: '10px',
-                  backgroundColor: '#ffffff',
-                  borderLeft: '4px solid #3498db',
-                  borderRadius: '4px',
-                  boxShadow: '0 2px 4px rgba(0,0,0,0.05)',
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  transition: 'transform 0.2s'
-                }}>
-                  <div style={{ display: 'flex', flexDirection: 'column' }}>
-                    <span style={{
-                      fontWeight: '600',
-                      color: '#2c3e50',
-                      marginBottom: '5px'
-                    }}>{eq.name || 'Unknown'}</span>
-                    <span style={{
-                      color: '#7f8c8d',
-                      fontSize: '14px'
-                    }}>
-                      ID: {eq.id || 'N/A'}
-                    </span>
-                  </div>
-                  <div style={{ display: 'flex', gap: '20px', alignItems: 'center' }}>
-                    <span style={{
-                      color: '#7f8c8d',
-                      fontSize: '14px'
-                    }}>
-                      Room {eq.place_id != null ? eq.place_id : 'N/A'}
-                    </span>
-                    <span style={{
-                      padding: '4px 12px',
-                      borderRadius: '12px',
-                      fontSize: '14px',
-                      backgroundColor: 
-                        eq.status === 'active' ? '#e6f7ee' :
-                        eq.status === 'inactive' ? '#f5f5f5' :
-                        eq.status === 'maintenance' ? '#fff8e6' : '#ffebee',
-                      color: 
-                        eq.status === 'active' ? '#00a854' :
-                        eq.status === 'inactive' ? '#757575' :
-                        eq.status === 'maintenance' ? '#ffa000' : '#f44336'
-                    }}>
-                      {eq.status ? eq.status.charAt(0).toUpperCase() + eq.status.slice(1) : 'Unknown'}
-                    </span>
-                    <button
-                      onClick={() => handleDeleteEquipment(eq.id)}
-                      disabled={deletingId === eq.id || !token}
-                      style={{
-                        padding: '6px 12px',
-                        backgroundColor: deletingId === eq.id || !token ? '#95a5a6' : '#e74c3c',
-                        color: 'white',
-                        border: 'none',
-                        borderRadius: '4px',
-                        cursor: deletingId === eq.id || !token ? 'not-allowed' : 'pointer',
-                        fontWeight: '500',
-                        fontSize: '14px',
-                        transition: 'background-color 0.2s'
-                      }}
-                    >
-                      {deletingId === eq.id ? 'Deleting...' : 'Delete'}
-                    </button>
-                  </div>
-                </li>
-              ))}
+              {filteredEquipments.map((eq) => {
+                const place = places.find(p => p.id === eq.place_id) || {};
+                return (
+                  <li key={eq.id} style={{
+                    padding: '15px 20px',
+                    marginBottom: '10px',
+                    backgroundColor: '#ffffff',
+                    borderLeft: '4px solid #3498db',
+                    borderRadius: '4px',
+                    boxShadow: '0 2px 4px rgba(0,0,0,0.05)',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    transition: 'transform 0.2s'
+                  }}>
+                    <div style={{ display: 'flex', flexDirection: 'column' }}>
+                      <span style={{
+                        fontWeight: '600',
+                        color: '#2c3e50',
+                        marginBottom: '5px'
+                      }}>{eq.name || 'Unknown'}</span>
+                      <span style={{
+                        color: '#7f8c8d',
+                        fontSize: '14px'
+                      }}>
+                        ID: {eq.id || 'N/A'}
+                      </span>
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
+                      <div style={{ display: 'flex', gap: '20px', alignItems: 'center', marginBottom: '5px' }}>
+                        <span style={{
+                          color: '#7f8c8d',
+                          fontSize: '14px'
+                        }}>
+                          {place.room || `Room ${eq.place_id || 'N/A'}`}
+                        </span>
+                        <span style={{
+                          padding: '4px 12px',
+                          borderRadius: '12px',
+                          fontSize: '14px',
+                          backgroundColor: 
+                            eq.status === 'active' ? '#e6f7ee' :
+                            eq.status === 'inactive' ? '#f5f5f5' :
+                            eq.status === 'maintenance' ? '#fff8e6' : '#ffebee',
+                          color: 
+                            eq.status === 'active' ? '#00a854' :
+                            eq.status === 'inactive' ? '#757575' :
+                            eq.status === 'maintenance' ? '#ffa000' : '#f44336'
+                        }}>
+                          {eq.status ? eq.status.charAt(0).toUpperCase() + eq.status.slice(1) : 'Unknown'}
+                        </span>
+                        <button
+                          onClick={() => handleDeleteEquipment(eq.id)}
+                          disabled={deletingId === eq.id || !token}
+                          style={{
+                            padding: '6px 12px',
+                            backgroundColor: deletingId === eq.id || !token ? '#95a5a6' : '#e74c3c',
+                            color: 'white',
+                            border: 'none',
+                            borderRadius: '4px',
+                            cursor: deletingId === eq.id || !token ? 'not-allowed' : 'pointer',
+                            fontWeight: '500',
+                            fontSize: '14px',
+                            transition: 'background-color 0.2s'
+                          }}
+                        >
+                          {deletingId === eq.id ? 'Deleting...' : 'Delete'}
+                        </button>
+                      </div>
+                      {place.address && (
+                        <span style={{
+                          color: '#95a5a6',
+                          fontSize: '13px',
+                          fontStyle: 'italic'
+                        }}>
+                          {place.address}
+                        </span>
+                      )}
+                    </div>
+                  </li>
+                );
+              })}
             </ul>
           </div>
         )}
         
-        {/* Create Button */}
+        {/* Create Buttons */}
         <div style={{
           display: 'flex',
           justifyContent: 'center',
-          marginTop: '30px'
+          marginTop: '30px',
+          gap: '20px'
         }}>
           <button
             onClick={() => setShowCreateForm(true)}
@@ -621,6 +882,24 @@ const EquipmentManagement = () => {
           >
             + Add New Equipment
           </button>
+          <button
+            onClick={() => setShowCreatePlaceForm(true)}
+            disabled={!token}
+            style={{
+              padding: '12px 30px',
+              backgroundColor: !token ? '#95a5a6' : '#3498db',
+              color: 'white',
+              border: 'none',
+              borderRadius: '6px',
+              cursor: !token ? 'not-allowed' : 'pointer',
+              fontWeight: '600',
+              fontSize: '16px',
+              boxShadow: '0 2px 10px rgba(52, 152, 219, 0.3)',
+              transition: 'background-color 0.2s, transform 0.2s, box-shadow 0.2s'
+            }}
+          >
+            + Add New Place
+          </button>
         </div>
       </div>
     </div>
@@ -628,3 +907,4 @@ const EquipmentManagement = () => {
 };
 
 export default EquipmentManagement;
+
