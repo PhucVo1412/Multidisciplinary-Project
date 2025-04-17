@@ -12,6 +12,7 @@ const EquipmentManagement = () => {
   const [error, setError] = useState('');
   const [isCreating, setIsCreating] = useState(false);
   const [deletingId, setDeletingId] = useState(null);
+  const [user, setUser] = useState(null);
   
   // New place creation states
   const [showCreatePlaceForm, setShowCreatePlaceForm] = useState(false);
@@ -40,6 +41,23 @@ const EquipmentManagement = () => {
   
   const token = localStorage.getItem('access_token');
 
+  // Fetch user data
+  useEffect(() => {
+    const fetchUserData = async () => {
+      if (!token) return;
+      
+      try {
+        const response = await axios.get(`${API_BASE_URL}/me`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        setUser(response.data);
+      } catch (err) {
+        console.error('Failed to fetch user data:', err);
+      }
+    };
+
+    fetchUserData();
+  }, [token]);
   
   // Fetch equipment and places data
   useEffect(() => {
@@ -90,7 +108,7 @@ const EquipmentManagement = () => {
     return () => {
       isMounted = false;
     };
-  }, [isCreating, isCreatingPlace]);
+  }, [isCreating, isCreatingPlace, token]);
 
   // Apply filters
   useEffect(() => {
@@ -822,23 +840,25 @@ const EquipmentManagement = () => {
                         }}>
                           {eq.status ? eq.status.charAt(0).toUpperCase() + eq.status.slice(1) : 'Unknown'}
                         </span>
-                        <button
-                          onClick={() => handleDeleteEquipment(eq.id)}
-                          disabled={deletingId === eq.id || !token}
-                          style={{
-                            padding: '6px 12px',
-                            backgroundColor: deletingId === eq.id || !token ? '#95a5a6' : '#e74c3c',
-                            color: 'white',
-                            border: 'none',
-                            borderRadius: '4px',
-                            cursor: deletingId === eq.id || !token ? 'not-allowed' : 'pointer',
-                            fontWeight: '500',
-                            fontSize: '14px',
-                            transition: 'background-color 0.2s'
-                          }}
-                        >
-                          {deletingId === eq.id ? 'Deleting...' : 'Delete'}
-                        </button>
+                        {user?.type === 'admin' && (
+                          <button
+                            onClick={() => handleDeleteEquipment(eq.id)}
+                            disabled={deletingId === eq.id || !token}
+                            style={{
+                              padding: '6px 12px',
+                              backgroundColor: deletingId === eq.id || !token ? '#95a5a6' : '#e74c3c',
+                              color: 'white',
+                              border: 'none',
+                              borderRadius: '4px',
+                              cursor: deletingId === eq.id || !token ? 'not-allowed' : 'pointer',
+                              fontWeight: '500',
+                              fontSize: '14px',
+                              transition: 'background-color 0.2s'
+                            }}
+                          >
+                            {deletingId === eq.id ? 'Deleting...' : 'Delete'}
+                          </button>
+                        )}
                       </div>
                       {place.address && (
                         <span style={{
@@ -857,54 +877,53 @@ const EquipmentManagement = () => {
           </div>
         )}
         
-        {/* Create Buttons */}
-        <div style={{
-          display: 'flex',
-          justifyContent: 'center',
-          marginTop: '30px',
-          gap: '20px'
-        }}>
-          <button
-            onClick={() => setShowCreateForm(true)}
-            disabled={!token}
-            style={{
-              padding: '12px 30px',
-              backgroundColor: !token ? '#95a5a6' : '#2ecc71',
-              color: 'white',
-              border: 'none',
-              borderRadius: '6px',
-              cursor: !token ? 'not-allowed' : 'pointer',
-              fontWeight: '600',
-              fontSize: '16px',
-              boxShadow: '0 2px 10px rgba(46, 204, 113, 0.3)',
-              transition: 'background-color 0.2s, transform 0.2s, box-shadow 0.2s'
-            }}
-          >
-            + Add New Equipment
-          </button>
-          <button
-            onClick={() => setShowCreatePlaceForm(true)}
-            disabled={!token}
-            style={{
-              padding: '12px 30px',
-              backgroundColor: !token ? '#95a5a6' : '#3498db',
-              color: 'white',
-              border: 'none',
-              borderRadius: '6px',
-              cursor: !token ? 'not-allowed' : 'pointer',
-              fontWeight: '600',
-              fontSize: '16px',
-              boxShadow: '0 2px 10px rgba(52, 152, 219, 0.3)',
-              transition: 'background-color 0.2s, transform 0.2s, box-shadow 0.2s'
-            }}
-          >
-            + Add New Place
-          </button>
-        </div>
+        {/* Create Buttons - only for admin */}
+        {user?.type === 'admin' && (
+          <div style={{
+            display: 'flex',
+            justifyContent: 'center',
+            marginTop: '30px',
+            gap: '20px'
+          }}>
+            <button
+              onClick={() => setShowCreateForm(true)}
+              style={{
+                padding: '12px 30px',
+                backgroundColor: '#2ecc71',
+                color: 'white',
+                border: 'none',
+                borderRadius: '6px',
+                cursor: 'pointer',
+                fontWeight: '600',
+                fontSize: '16px',
+                boxShadow: '0 2px 10px rgba(46, 204, 113, 0.3)',
+                transition: 'background-color 0.2s, transform 0.2s, box-shadow 0.2s'
+              }}
+            >
+              + Add New Equipment
+            </button>
+            <button
+              onClick={() => setShowCreatePlaceForm(true)}
+              style={{
+                padding: '12px 30px',
+                backgroundColor: '#3498db',
+                color: 'white',
+                border: 'none',
+                borderRadius: '6px',
+                cursor: 'pointer',
+                fontWeight: '600',
+                fontSize: '16px',
+                boxShadow: '0 2px 10px rgba(52, 152, 219, 0.3)',
+                transition: 'background-color 0.2s, transform 0.2s, box-shadow 0.2s'
+              }}
+            >
+              + Add New Place
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );
 };
 
 export default EquipmentManagement;
-

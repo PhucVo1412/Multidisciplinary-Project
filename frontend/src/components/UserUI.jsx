@@ -188,7 +188,7 @@ const UserUI = ({ setIsLoggedIn }) => {
                 transition: 'all 0.3s ease',
                 boxShadow: '0 2px 5px rgba(0,0,0,0.1)',
                 ':hover': {
-                  backgroundColor: currentComponent === key ? '#ff7e33' : 'rgba(255,255,255,0.25)',
+                  backgroundColor: currentComponent === key ? '#ff7e33' : 'rgba(59, 21, 228, 0.25)',
                   transform: 'translateX(5px)'
                 }
               }}

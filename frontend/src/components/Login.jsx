@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import axios from 'axios';
+import LoginIcon from '@mui/icons-material/Login';
 
 const Login = ({ setIsLoggedIn }) => {
   const [username, setUsername] = useState('');
@@ -144,11 +145,18 @@ const Login = ({ setIsLoggedIn }) => {
         ) : (
           <button 
             onClick={handleLogin} 
-            style={styles.button}
+            style={{
+              ...styles.button,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '8px' // Adds space between icon and text
+            }}
             onMouseEnter={(e) => e.target.style.backgroundColor = '#2c5282'}
             onMouseLeave={(e) => e.target.style.backgroundColor = '#3182ce'}
           >
-            Login
+            <LoginIcon style={{ fontSize: '20px' }} />
+            <span>Login</span>
           </button>
         )}
         <p style={{color: '#4a5568', fontSize: '0.9rem'}}>

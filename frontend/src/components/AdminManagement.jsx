@@ -1,13 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import axios from 'axios';
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  Paper,
+  Box,
+  TextField,
   Button,
   CircularProgress,
   Dialog,
@@ -16,18 +11,21 @@ import {
   DialogContentText,
   DialogActions,
   Snackbar,
-  Alert
+  Alert,
+  Paper,
+  Typography,
+  Container,
+  CssBaseline
 } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 
 const API_BASE_URL = 'http://localhost:5000';
 
 const AdminManagement = () => {
-  const [users, setUsers] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [userId, setUserId] = useState('');
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [userToDelete, setUserToDelete] = useState(null);
   const [snackbar, setSnackbar] = useState({
     open: false,
     message: '',
@@ -35,52 +33,33 @@ const AdminManagement = () => {
   });
   const token = localStorage.getItem('access_token');
 
-  useEffect(() => {
-    fetchNormalUsers();
-  }, []);
-
-  const fetchNormalUsers = async () => {
-    try {
-      setLoading(true);
-      const response = await axios.get(`${API_BASE_URL}/admin/normal_users`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-      });
-      setUsers(response.data);
-      setError('');
-    } catch (err) {
-      setError(err.response?.data?.message || 'Failed to fetch users');
+  const handleDeleteClick = () => {
+    if (!userId) {
       setSnackbar({
         open: true,
-        message: err.response?.data?.message || 'Failed to fetch users',
+        message: 'Please enter a user ID',
         severity: 'error'
       });
-    } finally {
-      setLoading(false);
+      return;
     }
-  };
-
-  const handleDeleteClick = (user) => {
-    setUserToDelete(user);
     setDeleteDialogOpen(true);
   };
 
   const handleDeleteConfirm = async () => {
     try {
-      await axios.delete(`${API_BASE_URL}/admin/normal_users/${userToDelete.id}`, {
+      setLoading(true);
+      await axios.delete(`${API_BASE_URL}/admin/normal_users/${userId}`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
       });
 
-      setUsers(users.filter(user => user.id !== userToDelete.id));
       setSnackbar({
         open: true,
         message: 'User deleted successfully',
         severity: 'success'
       });
+      setUserId('');
     } catch (err) {
       setSnackbar({
         open: true,
@@ -88,14 +67,13 @@ const AdminManagement = () => {
         severity: 'error'
       });
     } finally {
+      setLoading(false);
       setDeleteDialogOpen(false);
-      setUserToDelete(null);
     }
   };
 
   const handleDeleteCancel = () => {
     setDeleteDialogOpen(false);
-    setUserToDelete(null);
   };
 
   const handleSnackbarClose = () => {
@@ -103,65 +81,49 @@ const AdminManagement = () => {
   };
 
   return (
-    <div style={{ padding: '20px' }}>
-      <h2 style={{ marginBottom: '20px', color: '#2c3e50' }}>User Management</h2>
-      
-      {error && !loading && (
-        <Alert severity="error" style={{ marginBottom: '20px' }}>
-          {error}
-        </Alert>
-      )}
-
-      {loading ? (
-        <div style={{ display: 'flex', justifyContent: 'center', marginTop: '40px' }}>
-          <CircularProgress />
-        </div>
-      ) : (
-        <TableContainer component={Paper}>
-          <Table>
-            <TableHead>
-              <TableRow style={{ backgroundColor: '#f5f5f5' }}>
-                <TableCell style={{ fontWeight: 'bold' }}>ID</TableCell>
-                <TableCell style={{ fontWeight: 'bold' }}>Name</TableCell>
-                <TableCell style={{ fontWeight: 'bold' }}>Email</TableCell>
-                <TableCell style={{ fontWeight: 'bold' }}>Phone</TableCell>
-                <TableCell style={{ fontWeight: 'bold' }}>Type</TableCell>
-                <TableCell style={{ fontWeight: 'bold' }}>Actions</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {users.length > 0 ? (
-                users.map((user) => (
-                  <TableRow key={user.id}>
-                    <TableCell>{user.id}</TableCell>
-                    <TableCell>{user.name || 'N/A'}</TableCell>
-                    <TableCell>{user.email || 'N/A'}</TableCell>
-                    <TableCell>{user.phone || 'N/A'}</TableCell>
-                    <TableCell>{user.type || 'N/A'}</TableCell>
-                    <TableCell>
-                      <Button
-                        variant="contained"
-                        color="error"
-                        startIcon={<DeleteIcon />}
-                        onClick={() => handleDeleteClick(user)}
-                        size="small"
-                      >
-                        Delete
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))
-              ) : (
-                <TableRow>
-                  <TableCell colSpan={6} style={{ textAlign: 'center' }}>
-                    No users found
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
-        </TableContainer>
-      )}
+    <Container component="main" maxWidth="xs">
+      <CssBaseline />
+      <Box
+        sx={{
+          marginTop: 8,
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+        }}
+      >
+        <Typography component="h1" variant="h4" sx={{ mb: 3 }}>
+          User Deletion
+        </Typography>
+        
+        <Paper elevation={3} sx={{ p: 3, width: '100%' }}>
+          <Typography component="h2" variant="h6" sx={{ mb: 2 }}>
+            Delete Normal User
+          </Typography>
+          
+          <Box component="form" noValidate autoComplete="off" sx={{ mt: 1 }}>
+            <TextField
+              fullWidth
+              label="User ID to Delete"
+              variant="outlined"
+              value={userId}
+              onChange={(e) => setUserId(e.target.value)}
+              margin="normal"
+            />
+            
+            <Button
+              fullWidth
+              variant="contained"
+              color="error"
+              startIcon={<DeleteIcon />}
+              onClick={handleDeleteClick}
+              disabled={loading}
+              sx={{ mt: 3, mb: 2 }}
+            >
+              {loading ? <CircularProgress size={24} /> : 'Delete User'}
+            </Button>
+          </Box>
+        </Paper>
+      </Box>
 
       {/* Delete Confirmation Dialog */}
       <Dialog
@@ -175,7 +137,7 @@ const AdminManagement = () => {
         </DialogTitle>
         <DialogContent>
           <DialogContentText id="alert-dialog-description">
-            Are you sure you want to delete user: <strong>{userToDelete?.name}</strong> (ID: {userToDelete?.id})?
+            Are you sure you want to delete user with ID: <strong>{userId}</strong>?
             This action cannot be undone.
           </DialogContentText>
         </DialogContent>
@@ -187,8 +149,9 @@ const AdminManagement = () => {
             onClick={handleDeleteConfirm} 
             color="error"
             autoFocus
+            disabled={loading}
           >
-            Confirm Delete
+            {loading ? <CircularProgress size={24} /> : 'Confirm Delete'}
           </Button>
         </DialogActions>
       </Dialog>
@@ -198,6 +161,7 @@ const AdminManagement = () => {
         open={snackbar.open}
         autoHideDuration={6000}
         onClose={handleSnackbarClose}
+        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
       >
         <Alert 
           onClose={handleSnackbarClose} 
@@ -207,7 +171,7 @@ const AdminManagement = () => {
           {snackbar.message}
         </Alert>
       </Snackbar>
-    </div>
+    </Container>
   );
 };
 
