@@ -8,3 +8,4 @@ pytz
 Adafruit_IO
 setuptools
 python-dotenv
+Flask-Migrate

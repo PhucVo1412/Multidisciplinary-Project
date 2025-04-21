@@ -1,4 +1,5 @@
 from flask import Flask, request, jsonify
+from flask_migrate import Migrate
 from flask_sqlalchemy import SQLAlchemy
 from flask_bcrypt import Bcrypt
 from flask_jwt_extended import (
@@ -12,7 +13,7 @@ from sqlalchemy import LargeBinary
 import os
 
 # Import Adafruit IO MQTT publishing functionality from separate module
-from adafruit_io_client import publish_command, AIO_FEED_DOOR, AIO_FEED_LED, AIO_FEED_LIGHT
+from adafruit_io_client import publish_command, AIO_FEED_DOOR, AIO_FEED_LIGHT
 
 ###############################################################################
 # FLASK APP CONFIGURATION
@@ -24,6 +25,7 @@ app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///data.db'
 app.config['JWT_SECRET_KEY'] = 'supersecretkey'
 
 db = SQLAlchemy(app)
+migrate = Migrate(app, db)
 bcrypt = Bcrypt(app)
 jwt = JWTManager(app)
 
@@ -107,17 +109,8 @@ class Equipment(db.Model):
     start = db.Column(db.DateTime, default=lambda: datetime.now(VIETNAM_TZ))
     end = db.Column(db.DateTime, nullable=True)
     place_id = db.Column(db.Integer, db.ForeignKey('places.id'), nullable=True)
-    led_lcds = db.relationship('LedLCD', backref='equipment', lazy=True)
     lights = db.relationship('Light', backref='equipment', lazy=True)
     doors = db.relationship('Door', backref='equipment', lazy=True)
-
-
-class LedLCD(db.Model):
-    __tablename__ = 'led_lcd'
-    id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(120), nullable=False)
-    equipment_id = db.Column(db.Integer, db.ForeignKey('equipment.id'), nullable=False)
-
 
 class Light(db.Model):
     __tablename__ = 'light'
@@ -240,6 +233,29 @@ def login():
         access_token = create_access_token(identity=str(user.id))
         return jsonify({'access_token': access_token}), 200
     return jsonify({'message': 'Invalid credentials'}), 401
+
+# ---------------------------
+# Admin: List All Users
+# ---------------------------
+@app.route('/admin/users', methods=['GET'])
+@jwt_required()
+def admin_list_users():
+    current_user_id = int(get_jwt_identity())
+    current_user = User.query.get(current_user_id)
+    if not current_user or current_user.type != 'admin':
+        return jsonify({"message": "Unauthorized: admin access required"}), 403
+
+    users = User.query.all()
+    output = [
+        {
+            "id":   u.id,
+            "name": u.name,
+            "type": u.type,
+            "phone": u.phone
+        }
+        for u in users
+    ]
+    return jsonify(output), 200
 
 @app.route('/me', methods=['GET'])
 @jwt_required()
@@ -409,7 +425,6 @@ def get_equipment_endpoint(equipment_id):
     eq = Equipment.query.get(equipment_id)
     if not eq:
         return jsonify({"message": "Equipment not found"}), 404
-    led_lcds = [{"id": lcd.id, "name": lcd.name} for lcd in eq.led_lcds]
     lights = [{"id": l.id, "switch": l.switch} for l in eq.lights]
     doors = [{"id": d.id, "servo": d.servo} for d in eq.doors]
     return jsonify({
@@ -419,7 +434,6 @@ def get_equipment_endpoint(equipment_id):
         "start": eq.start.isoformat() if eq.start else None,
         "end": eq.end.isoformat() if eq.end else None,
         "place_id": eq.place_id,
-        "led_lcds": led_lcds,
         "lights": lights,
         "doors": doors
     }), 200
@@ -463,37 +477,6 @@ def delete_equipment_endpoint(equipment_id):
     db.session.delete(eq)
     db.session.commit()
     return jsonify({"message": "Equipment deleted"}), 200
-
-
-# ---------------------------
-# LedLCD Routes
-# ---------------------------
-@app.route('/equipment/<int:equipment_id>/ledlcd', methods=['POST'])
-@jwt_required()
-def create_ledlcd_endpoint():
-    equipment_id = request.view_args['equipment_id']
-    eq = Equipment.query.get(equipment_id)
-    if not eq:
-        return jsonify({"message": "Equipment not found"}), 404
-    data = request.json
-    name = data.get('name')
-    if not name:
-        return jsonify({"message": "'name' is required for LedLCD"}), 400
-    lcd = LedLCD(name=name, equipment_id=equipment_id)
-    db.session.add(lcd)
-    db.session.commit()
-    return jsonify({"message": "LedLCD created", "id": lcd.id}), 201
-
-
-@app.route('/equipment/<int:equipment_id>/ledlcd', methods=['GET'])
-@jwt_required()
-def get_ledlcd_for_equipment(equipment_id):
-    eq = Equipment.query.get(equipment_id)
-    if not eq:
-        return jsonify({"message": "Equipment not found"}), 404
-    lcds = [{"id": lcd.id, "name": lcd.name} for lcd in eq.led_lcds]
-    return jsonify(lcds), 200
-
 
 # ---------------------------
 # Light Routes
@@ -606,8 +589,6 @@ def execute_control(control_id):
     device_type = control.device_type.lower()
     if device_type == "door":
         feed = AIO_FEED_DOOR
-    elif device_type == "led":
-        feed = AIO_FEED_LED
     elif device_type == "light":
         feed = AIO_FEED_LIGHT
     else:
