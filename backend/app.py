@@ -10,9 +10,12 @@ from datetime import datetime
 import pytz
 from sqlalchemy import LargeBinary
 import os
+from deepface import DeepFace
 
 # Import Adafruit IO MQTT publishing functionality from separate module
-from adafruit_io_client import publish_command, AIO_FEED_DOOR, AIO_FEED_LED, AIO_FEED_LIGHT
+from adafruit_io_client import publish_command, AIO_FEED_DOOR, AIO_FEED_LED, AIO_FEED_LIGHT, AIO_FEED_IMAGE, aio_listener_img, AIO_FEED_BUTTON
+import base64
+import time
 
 ###############################################################################
 # FLASK APP CONFIGURATION
@@ -28,8 +31,6 @@ bcrypt = Bcrypt(app)
 jwt = JWTManager(app)
 
 VIETNAM_TZ = pytz.timezone('Asia/Ho_Chi_Minh')
-
-
 ###############################################################################
 # MODELS
 ###############################################################################
@@ -81,7 +82,7 @@ class FaceIdentity(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     face_id = db.Column(db.String(120), unique=True, nullable=True)
     name = db.Column(db.String(80), nullable=True)
-    face_image = db.Column(LargeBinary, nullable=True)  # JPG/JPEG binary data
+    face_image = db.Column(db.JSON, nullable=True)  # JPG/JPEG binary data
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
 
 
@@ -303,7 +304,7 @@ def create_or_update_face_identity():
     if 'face_image' not in request.files:
         return jsonify({'message': 'Face image file is required'}), 400
     image_file = request.files['face_image']
-    image_data = image_file.read()
+    image_data = DeepFace.represent(image_file, model_name='Facenet512', enforce_detection=False)[0]['embedding']
     if user.face_identity:
         user.face_identity.face_id = face_id_value
         user.face_identity.name = face_name
@@ -612,7 +613,8 @@ def execute_control(control_id):
         feed = AIO_FEED_LIGHT
     else:
         return jsonify({"message": "Unsupported device type"}), 400
-    publish_command(feed, control.action)
+    publish_command(aio_client, feed, control.action)
+    time.sleep(5)
     return jsonify({"message": f"Command '{control.action}' sent to {control.device_type}."}), 200
 
 
@@ -665,9 +667,46 @@ def admin_delete_normal_user(user_id):
     db.session.commit()
     return jsonify({"message": "Normal user deleted successfully"}), 200
 
+###############################################################################
+# AI module (Adafruit IO Image Processing)
+###############################################################################
+img_counter = 0
+def img_message(client, feed_id, payload):
+    if feed_id == AIO_FEED_IMAGE:
+        # print("Image received from Adafruit IO!")
+        global img_counter
+        img_counter += 1
+        if img_counter == 5:
+            img_counter = 0
+            return
+        try:
+            # Decode Base64 data
+            image_data = base64.b64decode(payload)
+            image_name = f"{img_counter}.jpg"
+            with open(image_name, "wb") as img_file:
+                img_file.write(image_data)
+            print(f"Image saved as {img_counter}.jpg")
+                # Process the image (e.g., run AI model)
+                # For demo, we just print the image name
+                # query = 'SELECT face_id, name, face_image FROM FaceIdentity WHERE face_image IS NOT NULL'
+                # output = db.execute(query).fetchall()
+                # for row in output:
+                #     result = DeepFace.verify(img1_path=image_name, img2_path=row.face_image, model_name='Facenet512')
+                #     if result['verified']:
+                #         #send accept message to adafruit io
+                        # break
+        except Exception as e:
+            print("Error processing image:", e)
 
 ###############################################################################
 # RUN THE APP
 ###############################################################################
 if __name__ == '__main__':
+    # with app.app_context():
+    #     aio_listener_img(img_message)  # Start the Adafruit IO listener
+    # print('SUCCESSFUL')
+    aio_client = aio_listener_img(img_message) 
+    aio_client.connect()
+    aio_client.loop_background()  # Keep MQTT connection alive in the background
+
     app.run(debug=True)
