@@ -74,7 +74,14 @@ const ActionLog = () => {
     }
     
     if (selectedDeviceId) {
-      filtered = filtered.filter(record => record.device_id === selectedDeviceId);
+      // Compare as numbers if possible
+      filtered = filtered.filter(record => {
+        const recordId = typeof record.device_id === 'number' ? 
+          record.device_id : 
+          parseInt(record.device_id, 10);
+        const filterId = parseInt(selectedDeviceId, 10);
+        return recordId === filterId;
+      });
     }
     
     setFilteredRecords(filtered);
@@ -100,51 +107,108 @@ const ActionLog = () => {
 
   if (loading) {
     return (
-      <div style={styles.loadingContainer}>
-        <p style={styles.loadingText}>Loading your action log...</p>
+      <div style={{
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
+        height: '200px'
+      }}>
+        <p style={{
+          color: '#7f8c8d',
+          fontSize: '18px'
+        }}>Loading your action log...</p>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div style={styles.errorContainer}>
-        <p style={styles.errorText}>{error}</p>
+      <div style={{
+        padding: '20px',
+        backgroundColor: '#fadbd8',
+        color: '#e74c3c',
+        borderRadius: '8px',
+        margin: '20px'
+      }}>
+        <p>{error}</p>
       </div>
     );
   }
 
   return (
-    <div style={styles.container}>
-      <div style={styles.card}>
-        <h2 style={styles.header}>Your Action Log</h2>
+    <div style={{
+      maxWidth: '1200px',
+      margin: '0 auto',
+      padding: '30px'
+    }}>
+      <div style={{
+        backgroundColor: '#ffffff',
+        borderRadius: '12px',
+        boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+        padding: '30px'
+      }}>
+        <h2 style={{
+          color: '#2c3e50',
+          marginBottom: '25px',
+          fontSize: '24px',
+          fontWeight: '600',
+          textAlign: 'center'
+        }}>Action History</h2>
         
         {/* Filters Section */}
-        <div style={styles.filtersContainer}>
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+          gap: '20px',
+          marginBottom: '30px',
+          padding: '20px',
+          backgroundColor: '#f8f9fa',
+          borderRadius: '8px'
+        }}>
           {/* Date Filter */}
-          <div style={styles.filterGroup}>
-            <label htmlFor="dateFilter" style={styles.filterLabel}>
-            Date:
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            <label htmlFor="dateFilter" style={{
+              fontSize: '14px',
+              fontWeight: '500',
+              color: '#34495e'
+            }}>
+              Date:
             </label>
             <input
               type="date"
               id="dateFilter"
               value={selectedDate}
               onChange={handleDateChange}
-              style={styles.filterInput}
+              style={{
+                padding: '10px 12px',
+                borderRadius: '6px',
+                border: '1px solid #ddd',
+                fontSize: '14px',
+                backgroundColor: '#ffffff'
+              }}
             />
           </div>
           
           {/* Device Type Filter */}
-          <div style={styles.filterGroup}>
-            <label htmlFor="deviceTypeFilter" style={styles.filterLabel}>
-            Device Type:
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            <label htmlFor="deviceTypeFilter" style={{
+              fontSize: '14px',
+              fontWeight: '500',
+              color: '#34495e'
+            }}>
+              Device Type:
             </label>
             <select
               id="deviceTypeFilter"
               value={selectedDeviceType}
               onChange={handleDeviceTypeChange}
-              style={styles.filterInput}
+              style={{
+                padding: '10px 12px',
+                borderRadius: '6px',
+                border: '1px solid #ddd',
+                fontSize: '14px',
+                backgroundColor: '#ffffff'
+              }}
             >
               <option value="">All Types</option>
               {deviceTypes.map(type => (
@@ -154,15 +218,25 @@ const ActionLog = () => {
           </div>
           
           {/* Device ID Filter */}
-          <div style={styles.filterGroup}>
-            <label htmlFor="deviceIdFilter" style={styles.filterLabel}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            <label htmlFor="deviceIdFilter" style={{
+              fontSize: '14px',
+              fontWeight: '500',
+              color: '#34495e'
+            }}>
               Device ID:
             </label>
             <select
               id="deviceIdFilter"
               value={selectedDeviceId}
               onChange={handleDeviceIdChange}
-              style={styles.filterInput}
+              style={{
+                padding: '10px 12px',
+                borderRadius: '6px',
+                border: '1px solid #ddd',
+                fontSize: '14px',
+                backgroundColor: '#ffffff'
+              }}
             >
               <option value="">All IDs</option>
               {deviceIds.map(id => (
@@ -175,7 +249,20 @@ const ActionLog = () => {
           {(selectedDate || selectedDeviceType || selectedDeviceId) && (
             <button
               onClick={clearFilters}
-              style={styles.clearButton}
+              style={{
+                alignSelf: 'flex-end',
+                padding: '10px 15px',
+                backgroundColor: '#e74c3c',
+                color: 'white',
+                border: 'none',
+                borderRadius: '6px',
+                fontSize: '14px',
+                cursor: 'pointer',
+                transition: 'background-color 0.3s',
+                ':hover': {
+                  backgroundColor: '#c0392b'
+                }
+              }}
             >
               Clear All Filters
             </button>
@@ -184,23 +271,58 @@ const ActionLog = () => {
         
         {/* Records List */}
         {filteredRecords.length === 0 ? (
-          <p style={styles.noRecords}>
+          <p style={{
+            textAlign: 'center',
+            color: '#7f8c8d',
+            padding: '40px',
+            backgroundColor: '#f8f9fa',
+            borderRadius: '8px'
+          }}>
             {selectedDate || selectedDeviceType || selectedDeviceId 
               ? 'No records match the selected filters'
               : 'No actions recorded yet.'
             }
           </p>
         ) : (
-          <ul style={styles.recordList}>
+          <ul style={{
+            listStyle: 'none',
+            padding: 0,
+            margin: 0
+          }}>
             {filteredRecords.map((record) => (
-              <li key={record.id} style={styles.recordItem}>
-                <div style={styles.recordDetails}>
-                  <span style={styles.actionText}>{record.action}</span>
-                  <span style={styles.deviceInfo}>
-                    {record.action} (ID: {record.device_id})
+              <li key={record.id} style={{
+                padding: '15px 20px',
+                marginBottom: '10px',
+                backgroundColor: '#ffffff',
+                borderLeft: '4px solid #3498db',
+                borderRadius: '4px',
+                boxShadow: '0 2px 4px rgba(0,0,0,0.05)',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                transition: 'transform 0.2s',
+                ':hover': {
+                  transform: 'translateX(5px)'
+                }
+              }}>
+                <div style={{ display: 'flex', flexDirection: 'column' }}>
+                  <span style={{
+                    fontWeight: '600',
+                    color: '#2c3e50',
+                    marginBottom: '5px'
+                  }}>{record.action.charAt(0).toUpperCase() + record.action.slice(1)}</span>
+                  <span style={{
+                    color: '#7f8c8d',
+                    fontSize: '14px'
+                  }}>
+                    {record.device_type} (ID: {record.device_id})
                   </span>
                 </div>
-                <span style={styles.timeText}>
+                <span style={{
+                  color: '#7f8c8d',
+                  fontSize: '14px',
+                  whiteSpace: 'nowrap'
+                }}>
                   {new Date(record.start_time).toLocaleString('en-US', {
                     month: 'short',
                     day: 'numeric',
@@ -217,122 +339,6 @@ const ActionLog = () => {
       </div>
     </div>
   );
-};
-
-const styles = {
-  container: {
-    display: 'flex',
-    justifyContent: 'center',
-    alignItems: 'center',
-    minHeight: 'calc(100vh - 60px)',
-    padding: '20px',
-    boxSizing: 'border-box',
-  },
-  card: {
-    width: '800px',
-    maxWidth: '90%',
-    backgroundColor: '#ffffff',
-    borderRadius: '8px',
-    boxShadow: '0 4px 10px rgba(0, 0, 0, 0.1)',
-    padding: '20px',
-    boxSizing: 'border-box',
-  },
-  header: {
-    fontSize: '20px',
-    fontWeight: '600',
-    color: '#333',
-    textAlign: 'center',
-    marginBottom: '20px',
-  },
-  filtersContainer: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '15px',
-    marginBottom: '20px',
-  },
-  filterGroup: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '10px',
-  },
-  filterLabel: {
-    fontSize: '14px',
-    color: '#333',
-    minWidth: '120px',
-  },
-  filterInput: {
-    padding: '8px',
-    fontSize: '14px',
-    borderRadius: '4px',
-    border: '1px solid #ccc',
-    flex: 1,
-  },
-  clearButton: {
-    padding: '8px 12px',
-    fontSize: '14px',
-    backgroundColor: '#f0f0f0',
-    border: 'none',
-    borderRadius: '4px',
-    cursor: 'pointer',
-    color: '#333',
-    marginTop: '10px',
-    alignSelf: 'flex-start',
-  },
-  recordList: {
-    listStyle: 'none',
-    padding: '0',
-    margin: '0',
-  },
-  recordItem: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: '12px 0',
-    borderBottom: '1px solid #e0e0e0',
-  },
-  recordDetails: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '4px',
-  },
-  actionText: {
-    fontWeight: 'normal',
-    fontSize: '16px',
-  },
-  deviceInfo: {
-    fontSize: '14px',
-    color: '#666',
-  },
-  timeText: {
-    fontSize: '14px',
-    color: '#666',
-  },
-  noRecords: {
-    fontSize: '16px',
-    color: '#666',
-    textAlign: 'center',
-    padding: '20px',
-  },
-  loadingContainer: {
-    display: 'flex',
-    justifyContent: 'center',
-    alignItems: 'center',
-    minHeight: 'calc(100vh - 60px)',
-  },
-  loadingText: {
-    fontSize: '16px',
-    color: '#333',
-  },
-  errorContainer: {
-    display: 'flex',
-    justifyContent: 'center',
-    alignItems: 'center',
-    minHeight: 'calc(100vh - 60px)',
-  },
-  errorText: {
-    color: '#d32f2f',
-    fontSize: '16px',
-  },
 };
 
 export default ActionLog;
