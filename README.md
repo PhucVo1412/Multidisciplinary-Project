@@ -3,7 +3,7 @@
 _This project is about making smart home protection service, which can automatically open and lock house's door using face authentication. The system include an web application to control remotely._
 
 ## 🛠️ Programming Language 
-- **Language**: JavaScript, HTML, CSS
+- **Language**: JavaScript, HTML, CSS, Python
 - **Frontend**: ReactJs, HTML, CSS, MaterialUI
 - **Backend**: Python Flask
 
