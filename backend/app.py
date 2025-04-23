@@ -11,9 +11,37 @@ from datetime import datetime
 import pytz
 from sqlalchemy import LargeBinary
 import os
+from deepface import DeepFace
 
 # Import Adafruit IO MQTT publishing functionality from separate module
-from adafruit_io_client import publish_command, AIO_FEED_DOOR, AIO_FEED_LIGHT
+import adafruit_io_client as aio
+import cv2
+import numpy as np
+import base64
+import time
+
+###############################################################################
+# Adafruit CONFIGURATION
+###############################################################################
+
+def message(client, feed_id, payload):#edit this to manipulate aio
+    if feed_id == aio.AIO_FEED:
+        print("Message received from Adafruit IO!")
+        # Process the message as needed
+        # Example: print the payload
+        print(f"Feed ID: {feed_id}, Payload: {payload}")
+    elif feed_id == aio.AIO_FEED_DOOR:
+        print("Door command received:", payload)
+    elif feed_id == aio.AIO_FEED_LIGHT:
+        print("Light command received:", payload)
+    elif feed_id == aio.AIO_FEED_LED:
+        print("LED command received:", payload)
+    elif feed_id == aio.AIO_FEED_BUTTON:
+        print("Button command received:", payload)
+
+client = aio.normal_aio(message)
+client.connect()
+client.loop_background()
 
 ###############################################################################
 # FLASK APP CONFIGURATION
@@ -30,8 +58,6 @@ bcrypt = Bcrypt(app)
 jwt = JWTManager(app)
 
 VIETNAM_TZ = pytz.timezone('Asia/Ho_Chi_Minh')
-
-
 ###############################################################################
 # MODELS
 ###############################################################################
@@ -588,12 +614,12 @@ def execute_control(control_id):
         return jsonify({"message": "Control not found or not owned by user"}), 404
     device_type = control.device_type.lower()
     if device_type == "door":
-        feed = AIO_FEED_DOOR
+        feed = aio.AIO_FEED_DOOR
     elif device_type == "light":
-        feed = AIO_FEED_LIGHT
+        feed = aio.AIO_FEED_LIGHT
     else:
         return jsonify({"message": "Unsupported device type"}), 400
-    publish_command(feed, control.action)
+    aio.publish_command(client, feed, control.action)
     return jsonify({"message": f"Command '{control.action}' sent to {control.device_type}."}), 200
 
 
@@ -646,9 +672,54 @@ def admin_delete_normal_user(user_id):
     db.session.commit()
     return jsonify({"message": "Normal user deleted successfully"}), 200
 
+###############################################################################
+# AI module (Adafruit IO Image Processing)
+###############################################################################
+img_counter = 0
+def img_message(client, feed_id, payload):
+    if feed_id == aio.AIO_FEED_IMAGE:
+        # print("Image received from Adafruit IO!")
+        global img_counter
+        img_counter += 1
+        try:
+            # Decode Base64 data
+            image_data = base64.b64decode(payload)
+            image_name = f"{img_counter}.jpg"
+            with open(image_name, "wb") as img_file:
+                img_file.write(image_data)
+            print(f"Image saved as {img_counter}.jpg")
+        except Exception as e:
+            print("Error processing image:", e)
+        if img_counter == 5:
+            img_counter = 0
+            with app.app_context():
+                ids = db.session.execute(db.select(FaceIdentity.name, FaceIdentity.face_image)).all()
+            ids = [(x[0],cv2.imdecode(np.fromstring(x[1], np.uint8),cv2.IMREAD_COLOR)) for x in ids] #npdarray of bgr
+            flag = False
+            for i in range(5):
+                img_name = f"{i+1}.jpg"
+                if not os.path.exists(img_name):
+                    continue
+                if not flag:
+                    for id in ids:
+                        try:
+                            result = DeepFace.verify(img_name, id[1], model_name='Facenet512')
+                            if result['verified']:
+                                client.publish(aio.AIO_FEED_DOOR, "ON")
+                                client.publish(aio.AIO_FEED, id[0])
+                                flag = True
+                                break
+                        except Exception as e:
+                            print("Error in verification:", e)
+                os.remove(img_name)
+            if not flag:
+                client.publish(aio.AIO_FEED, "Unknown Person")
 
 ###############################################################################
 # RUN THE APP
 ###############################################################################
 if __name__ == '__main__':
+    img_aio_client = aio.aio_listener_img(img_message) 
+    img_aio_client.connect()
+    img_aio_client.loop_background()  # Keep MQTT connection alive in the background
     app.run(debug=True)
