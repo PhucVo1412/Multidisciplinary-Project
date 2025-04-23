@@ -88,7 +88,7 @@ class NormalUser(User):
     id = db.Column(db.Integer, db.ForeignKey('users.id'), primary_key=True)
     action = db.Column(db.String(120), nullable=True)
     __mapper_args__ = {
-        'polymorphic_identity': 'normal'  # Changed from 'user' to 'normal'
+        'polymorphic_identity': 'normal'
     }
 
 
@@ -233,7 +233,7 @@ def register():
     else:
         action = data.get('action', 'default_action')
         new_user = NormalUser(
-            type='user',  # Normal users are stored with polymorphic_identity "user" but mapped as NormalUser
+            type='normal',
             name=name,
             account=account,
             phone=phone,
