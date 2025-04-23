@@ -19,7 +19,7 @@ const Login = ({ setIsLoggedIn }) => {
       margin: 0,
       padding: 0,
       backgroundColor: 'aqua',
-      backgroundImage: 'url("https://scontent.fsgn5-14.fna.fbcdn.net/v/t39.30808-6/480566140_937548405231812_434531939589231469_n.jpg?_nc_cat=106&ccb=1-7&_nc_sid=86c6b0&_nc_ohc=xDiOn9LLNLsQ7kNvwEVlQIA&_nc_oc=AdmojOiToT-q4YZ0320OrgEUU6q1mQi-3a4OKggNhVQ-DMusChmQ6N5eL3azRhRdtHaiWhs14SF6SifyFBZrVRia&_nc_zt=23&_nc_ht=scontent.fsgn5-14.fna&_nc_gid=N2KIVCMQkeRRzkPmLU3Axw&oh=00_AfGvEdTBaq3Wa8aKgHUi8KAPMNkKiZZR1mQRouj6ATE45g&oe=6803EA1A")',
+      backgroundImage: 'url("https://thhome.vn/wp-content/uploads/2021/05/anh-biet-thu-12.jpg")',
       backgroundSize: 'cover',
       backgroundPosition: 'center',
       backgroundRepeat: 'no-repeat',
