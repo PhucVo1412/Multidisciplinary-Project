@@ -10,7 +10,12 @@ const AdminManagement = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [deletingId, setDeletingId] = useState(null);
-  
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+  const [message, setMessage] = useState('');
+  const [isRegistering, setIsRegistering] = useState(false);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);  // For sidebar state
+
   // Filter states
   const [filters, setFilters] = useState({
     name: '',
@@ -88,6 +93,26 @@ const AdminManagement = () => {
     }
   };
 
+  // Handle user registration
+  const handleRegister = async () => {
+    try {
+      const response = await axios.post(`${API_BASE_URL}/register`, {
+        username,
+        password,
+        role: 'user',  // Or 'admin' if needed
+        action: 'default_action',
+        access: 'full',
+      });
+      setMessage('Registration successful! Please log in.');
+      setIsRegistering(false);
+      setUsername('');
+      setPassword('');
+      setIsSidebarOpen(false);  // Close the sidebar after successful registration
+    } catch (error) {
+      setMessage(error.response?.data?.message || 'Registration failed');
+    }
+  };
+
   // Loading state
   if (loading) {
     return (
@@ -126,7 +151,7 @@ const AdminManagement = () => {
           fontWeight: '600',
           textAlign: 'center'
         }}>Admin Management</h2>
-        
+
         {/* Filter Controls */}
         <div style={{
           display: 'flex',
@@ -185,7 +210,7 @@ const AdminManagement = () => {
             </select>
           </div>
         </div>
-        
+
         {error && (
           <div style={{
             padding: '15px',
@@ -280,6 +305,104 @@ const AdminManagement = () => {
           </div>
         )}
       </div>
+
+      {/* Add New User Button */}
+      <button
+        onClick={() => setIsSidebarOpen(true)}
+        style={{
+          position: 'fixed',
+          bottom: '30px',
+          right: '30px',
+          backgroundColor: '#3498db',
+          color: 'white',
+          border: 'none',
+          borderRadius: '50%',
+          padding: '15px',
+          fontSize: '24px',
+          boxShadow: '0 4px 10px rgba(0, 0, 0, 0.1)',
+          cursor: 'pointer',
+          zIndex: 9999
+        }}
+      >
+        +
+      </button>
+
+      {/* Sidebar Register Form */}
+      {isSidebarOpen && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          right: 0,
+          width: '350px',
+          height: '100vh',
+          backgroundColor: '#fff',
+          boxShadow: '-4px 0 12px rgba(0,0,0,0.1)',
+          padding: '30px',
+          zIndex: 9999,
+          transition: 'transform 0.3s ease-in-out',
+          transform: isSidebarOpen ? 'translateX(0)' : 'translateX(100%)'
+        }}>
+          <h3 style={{ marginBottom: '20px', color: '#2c3e50' }}>Register New User</h3>
+          <input
+            type="text"
+            placeholder="Username"
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+            style={{
+              padding: '10px',
+              width: '100%',
+              marginBottom: '10px',
+              borderRadius: '6px',
+              border: '1px solid #ddd',
+            }}
+          />
+          <input
+            type="password"
+            placeholder="Password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            style={{
+              padding: '10px',
+              width: '100%',
+              marginBottom: '20px',
+              borderRadius: '6px',
+              border: '1px solid #ddd',
+            }}
+          />
+          <button
+            onClick={handleRegister}
+            style={{
+              padding: '10px',
+              width: '100%',
+              backgroundColor: '#3498db',
+              color: 'white',
+              border: 'none',
+              borderRadius: '6px',
+              fontWeight: '600',
+              cursor: 'pointer',
+            }}
+          >
+            Register
+          </button>
+          <button
+            onClick={() => setIsSidebarOpen(false)}
+            style={{
+              padding: '10px',
+              width: '100%',
+              backgroundColor: '#e74c3c',
+              color: 'white',
+              border: 'none',
+              borderRadius: '6px',
+              fontWeight: '600',
+              marginTop: '10px',
+              cursor: 'pointer',
+            }}
+          >
+            Close
+          </button>
+          {message && <p style={{ color: '#e74c3c', marginTop: '10px' }}>{message}</p>}
+        </div>
+      )}
     </div>
   );
 };
