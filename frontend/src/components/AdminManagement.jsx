@@ -125,7 +125,7 @@ const AdminManagement = () => {
           fontSize: '24px',
           fontWeight: '600',
           textAlign: 'center'
-        }}>User Management</h2>
+        }}>Admin Management</h2>
         
         {/* Filter Controls */}
         <div style={{
@@ -181,7 +181,7 @@ const AdminManagement = () => {
             >
               <option value="">All Types</option>
               <option value="admin">Admin</option>
-              <option value="normal">Normal User</option>
+              <option value="normal">User</option>
             </select>
           </div>
         </div>
