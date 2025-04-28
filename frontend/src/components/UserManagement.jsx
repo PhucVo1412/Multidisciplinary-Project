@@ -345,7 +345,7 @@ const UserManagement = () => {
                   }
                 }}
               >
-                {showCamera ? 'Close Camera' : 'Face Recognition'}
+                {showCamera ? 'Close Camera' : 'Face Update'}
               </button>
 
               <button style={{
