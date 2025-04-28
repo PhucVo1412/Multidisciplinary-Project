@@ -25,6 +25,7 @@ import time
 ###############################################################################
 
 def message(client, feed_id, payload):#edit this to manipulate aio
+    
     if feed_id == aio.AIO_FEED:
         print("Message received from Adafruit IO!")
         # Process the message as needed
@@ -38,6 +39,8 @@ def message(client, feed_id, payload):#edit this to manipulate aio
         print("LED command received:", payload)
     elif feed_id == aio.AIO_FEED_BUTTON:
         print("Button command received:", payload)
+
+
 
 client = aio.normal_aio(message)
 client.connect()
