@@ -37,7 +37,7 @@ const Action = () => {
 
     try {
       const response = await axios.post(
-        'http://localhost:5000/controls',
+        'http://localhost:5000//controls',
         {
           action: `${action} ${deviceType}`,
           device_type: deviceType,
