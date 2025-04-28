@@ -1,3 +1,5 @@
+DeepFace
+cv2
 Flask
 Flask-SQLAlchemy
 Flask-Bcrypt

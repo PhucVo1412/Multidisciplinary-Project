@@ -427,8 +427,8 @@
     },
     "/controls": {
       "post": {
-        "summary": "Create a Control action",
-        "description": "Creates a new control action (e.g. open door, turn Light on) for the logged-in user.",
+        "summary": "Create and send a control action",
+        "description": "Persists a control request and immediately publishes it to the Adafruit IO feed for door or light.",
         "security": [{ "BearerAuth": [] }],
         "requestBody": {
           "required": true,
@@ -439,8 +439,22 @@
           }
         },
         "responses": {
-          "201": { "description": "Control created" },
-          "400": { "description": "Missing required fields" }
+          "201": {
+            "description": "Control created and sent",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": { "type": "string" },
+                    "control": { "$ref": "#/components/schemas/Control" }
+                  }
+                }
+              }
+            }
+          },
+          "400": { "description": "Missing or invalid fields" },
+          "500": { "description": "Failed to send command" }
         }
       },
       "get": {
@@ -459,27 +473,6 @@
               }
             }
           }
-        }
-      }
-    },
-    "/controls/{control_id}/execute": {
-      "parameters": [
-        {
-          "name": "control_id",
-          "in": "path",
-          "required": true,
-          "schema": { "type": "integer" },
-          "description": "ID of the Control action"
-        }
-      ],
-      "post": {
-        "summary": "Execute a Control action",
-        "description": "Publishes the control action to the appropriate Adafruit IO feed.",
-        "security": [{ "BearerAuth": [] }],
-        "responses": {
-          "200": { "description": "Command sent successfully" },
-          "400": { "description": "Unsupported device type" },
-          "404": { "description": "Control not found or not owned by user" }
         }
       }
     },

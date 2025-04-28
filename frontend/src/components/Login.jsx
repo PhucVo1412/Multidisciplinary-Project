@@ -6,7 +6,6 @@ const Login = ({ setIsLoggedIn }) => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [message, setMessage] = useState('');
-  const [isRegistering, setIsRegistering] = useState(false);
 
   // Styles object
   const styles = {
@@ -67,18 +66,8 @@ const Login = ({ setIsLoggedIn }) => {
       cursor: 'pointer',
       transition: 'all 0.3s ease',
     },
-    linkButton: {
-      background: 'none',
-      border: 'none',
-      color: '#3182ce', // Matching the button color
-      cursor: 'pointer',
-      padding: '0',
-      marginLeft: '0.25rem',
-      textDecoration: 'underline',
-      fontSize: '0.9rem',
-    },
     message: {
-      color: '#grey',
+      color: '#4a5568',
       marginTop: '1rem',
       fontWeight: '500',
     },
@@ -98,27 +87,11 @@ const Login = ({ setIsLoggedIn }) => {
     }
   };
 
-  const handleRegister = async () => {
-    try {
-      const response = await axios.post('http://localhost:5000/register', {
-        username,
-        password,
-        role: 'user',
-        action: 'default_action',
-        access: 'full',
-      });
-      setMessage('Registration successful! Please log in.');
-      setIsRegistering(false);
-    } catch (error) {
-      setMessage(error.response?.data?.message || 'Registration failed');
-    }
-  };
-
   return (
     <div style={styles.loginContainer}>
       <div style={styles.loginForm}>
         <h2 style={styles.title}>Smart Home Protection Service</h2>
-        <h2 style={styles.title}>{isRegistering ? 'Register' : 'Login'}</h2>
+        <h2 style={styles.title}>Login</h2>
         <input
           type="text"
           placeholder="Username"
@@ -133,55 +106,21 @@ const Login = ({ setIsLoggedIn }) => {
           onChange={(e) => setPassword(e.target.value)}
           style={styles.input}
         />
-        {isRegistering ? (
-          <button 
-            onClick={handleRegister} 
-            style={styles.button}
-            onMouseEnter={(e) => e.target.style.backgroundColor = '#2c5282'}
-            onMouseLeave={(e) => e.target.style.backgroundColor = '#3182ce'}
-          >
-            Register
-          </button>
-        ) : (
-          <button 
-            onClick={handleLogin} 
-            style={{
-              ...styles.button,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '8px' // Adds space between icon and text
-            }}
-            onMouseEnter={(e) => e.target.style.backgroundColor = '#2c5282'}
-            onMouseLeave={(e) => e.target.style.backgroundColor = '#3182ce'}
-          >
-            <LoginIcon style={{ fontSize: '20px' }} />
-            <span>Login</span>
-          </button>
-        )}
-        <p style={{color: '#4a5568', fontSize: '0.9rem'}}>
-          {isRegistering ? (
-            <>
-              Already have an account?{' '}
-              <button
-                style={styles.linkButton}
-                onClick={() => setIsRegistering(false)}
-              >
-                Login here
-              </button>
-            </>
-          ) : (
-            <>
-              Don't have an account?{' '}
-              <button
-                style={styles.linkButton}
-                onClick={() => setIsRegistering(true)}
-              >
-                Register here
-              </button>
-            </>
-          )}
-        </p>
+        <button
+          onClick={handleLogin}
+          style={{
+            ...styles.button,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '8px', // Adds space between icon and text
+          }}
+          onMouseEnter={(e) => (e.target.style.backgroundColor = '#2c5282')}
+          onMouseLeave={(e) => (e.target.style.backgroundColor = '#3182ce')}
+        >
+          <LoginIcon style={{ fontSize: '20px' }} />
+          <span>Login</span>
+        </button>
         {message && <p style={styles.message}>{message}</p>}
       </div>
     </div>

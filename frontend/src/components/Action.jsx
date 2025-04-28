@@ -3,7 +3,8 @@ import axios from 'axios';
 
 const Action = () => {
   const [deviceType, setDeviceType] = useState('');
-  const [deviceId, setDeviceId] = useState('');
+  // const [deviceId, setDeviceId] = useState('');
+  const deviceId = 1;
   const [action, setAction] = useState('');
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
@@ -55,7 +56,6 @@ const Action = () => {
 
       setMessage(`Action sent: ${action} ${deviceType} #${deviceId}`);
       setDeviceType('');
-      setDeviceId('');
       setAction('');
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to send command');
@@ -124,7 +124,7 @@ const Action = () => {
             </select>
           </div>
 
-          {/* Device ID Input */}
+          {/* Device ID Input
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
             <label htmlFor="deviceId" style={{
               fontSize: '14px',
@@ -153,7 +153,7 @@ const Action = () => {
                 }
               }}
             />
-          </div>
+          </div> */}
 
           {/* Action Selection */}
           {deviceType && (

@@ -54,7 +54,7 @@ CORS(app)
 
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///data.db'
 app.config['JWT_SECRET_KEY'] = 'supersecretkey'
-
+app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB limit
 db = SQLAlchemy(app)
 migrate = Migrate(app, db)
 bcrypt = Bcrypt(app)
@@ -360,19 +360,6 @@ def create_or_update_face_identity():
     return jsonify({'message': 'Face identity saved/updated'}), 200
 
 
-@app.route('/face_identity', methods=['GET'])
-@jwt_required()
-def get_face_identity():
-    current_user_id = int(get_jwt_identity())
-    user = User.query.get(current_user_id)
-    if not user or not user.face_identity:
-        return jsonify({'message': 'Face identity not found'}), 404
-    fi = user.face_identity
-    import base64
-    encoded_image = base64.b64encode(fi.face_image).decode('utf-8') if fi.face_image else None
-    return jsonify({'id': fi.id, 'face_id': fi.face_id, 'name': fi.name, 'face_image': encoded_image}), 200
-
-
 # ---------------------------
 # Place Routes
 # ---------------------------
@@ -577,6 +564,17 @@ def create_control():
     equipment_id = data.get('equipment_id')
     if not action or not device_type or not device_id:
         return jsonify({"message": "action, device_type, and device_id are required"}), 400
+
+    feed_map = {
+        "door": aio.AIO_FEED_DOOR,
+        "light": aio.AIO_FEED_LIGHT,
+    }
+
+    feed = feed_map.get(device_type)
+
+    if feed is None:
+        return jsonify({"message": "Unsupported device type"}), 400
+
     control = Control(
         action=action,
         device_type=device_type,
@@ -586,8 +584,31 @@ def create_control():
         status=data.get('status', 'pending')
     )
     db.session.add(control)
-    db.session.commit()
-    return jsonify({"message": "Control created", "id": control.id}), 201
+    db.session.flush()
+
+    try:
+        if action == "Open" or action == "Close":
+            client.publish(feed, "ON") if action == "Open" else client.publish(feed, "OFF")  
+        else:
+            client.publish(feed, "ON") if action == "Turn on" else client.publish(feed, "OFF")
+        control.status     = 'sent'
+        control.start_time = datetime.now(VIETNAM_TZ)
+        db.session.commit()
+
+        return jsonify({
+            "message": f"Command '{action}' sent to {device_type}.",
+            "control": {
+                "id":          control.id,
+                "action":      control.action,
+                "device_type": control.device_type,
+                "device_id":   control.device_id,
+                "status":      control.status
+            }
+        }), 201
+
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"message": "Failed to send command", "error": str(e)}), 500
 
 
 @app.route('/controls', methods=['GET'])
@@ -606,25 +627,6 @@ def get_controls():
         'equipment_id': c.equipment_id
     } for c in controls]
     return jsonify(output), 200
-
-
-@app.route('/controls/<int:control_id>/execute', methods=['POST'])
-@jwt_required()
-def execute_control(control_id):
-    current_user_id = int(get_jwt_identity())
-    control = Control.query.filter_by(id=control_id, user_id=current_user_id).first()
-    if not control:
-        return jsonify({"message": "Control not found or not owned by user"}), 404
-    device_type = control.device_type.lower()
-    if device_type == "door":
-        feed = aio.AIO_FEED_DOOR
-    elif device_type == "light":
-        feed = aio.AIO_FEED_LIGHT
-    else:
-        return jsonify({"message": "Unsupported device type"}), 400
-    aio.publish_command(client, feed, control.action)
-    return jsonify({"message": f"Command '{control.action}' sent to {control.device_type}."}), 200
-
 
 @app.route('/controls/<int:control_id>', methods=['PUT'])
 @jwt_required()
