@@ -366,7 +366,7 @@ const UserManagement = () => {
 
             {showCamera && (
               <div style={{ marginTop: '30px', borderTop: '1px solid #eee', paddingTop: '20px' }}>
-                <Camera />
+                <Camera  />
               </div>
             )}
           </>

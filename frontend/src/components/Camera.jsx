@@ -1,5 +1,6 @@
 import React, { useRef, useState } from "react";
 import axios from 'axios';
+
 const Camera = () => {
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
