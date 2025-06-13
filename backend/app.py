@@ -125,6 +125,14 @@ class FaceIdentity(db.Model):
         UniqueConstraint('user_id', 'face_id', name='uix_user_face'),
     )
 
+# ---------------------------
+# OpenDoor Log Model
+# ---------------------------
+class OpenDoorLog(db.Model):
+    __tablename__ = 'open_door_logs'
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(80), nullable=True)
+    timestamp = db.Column(db.DateTime, default=lambda: datetime.now(VIETNAM_TZ))
 
 # ---------------------------
 # Place Model
@@ -708,8 +716,8 @@ def img_message(client, feed_id, payload):
         if img_counter == 5:
             img_counter = 0
             with app.app_context():
-                ids = db.session.execute(db.select(FaceIdentity.name, FaceIdentity.face_image)).all()
-            ids = [(x[0],cv2.imdecode(np.fromstring(x[1], np.uint8),cv2.IMREAD_COLOR)) for x in ids] #npdarray of bgr
+                ids = db.session.execute(db.select(FaceIdentity.name, FaceIdentity.face_image, FaceIdentity.user_id)).all()
+            ids = [(x[0],cv2.imdecode(np.fromstring(x[1], np.uint8),cv2.IMREAD_COLOR),x[2]) for x in ids] #npdarray of bgr
             flag = False
             for i in range(5):
                 img_name = f"{i+1}.jpg"
@@ -722,6 +730,17 @@ def img_message(client, feed_id, payload):
                             if result['verified']:
                                 client.publish(aio.AIO_FEED_DOOR, "ON")
                                 client.publish(aio.AIO_FEED, id[0])
+                                with app.app_context():
+                                    db.session.add(Control(
+                                        action="open door",
+                                        device_type="door",
+                                        device_id=1,
+                                        status="sent",
+                                        user_id=id[2],  
+                                        equipment_id=1  
+                                    ))
+                                    db.session.add(OpenDoorLog(name=id[0], timestamp=datetime.now(VIETNAM_TZ)))
+                                    db.session.commit()
                                 flag = True
                                 break
                         except Exception as e:
@@ -729,6 +748,9 @@ def img_message(client, feed_id, payload):
                 os.remove(img_name)
             if not flag:
                 client.publish(aio.AIO_FEED, "Unknown Person")
+                with app.app_context():
+                    db.session.add(OpenDoorLog(name="Unknown Person", timestamp=datetime.now(VIETNAM_TZ)))
+                    db.session.commit()
 
 ###############################################################################
 # RUN THE APP
