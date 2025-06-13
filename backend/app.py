@@ -12,7 +12,7 @@ import pytz
 from sqlalchemy import LargeBinary
 import os
 from deepface import DeepFace
-
+from sqlalchemy import UniqueConstraint
 # Import Adafruit IO MQTT publishing functionality from separate module
 import adafruit_io_client as aio
 import cv2
@@ -106,11 +106,21 @@ class AdminUser(User):
 # ---------------------------
 class FaceIdentity(db.Model):
     __tablename__ = 'face_identity'
+    # id = db.Column(db.Integer, primary_key=True)
+    # face_id = db.Column(db.String(120), unique=True, nullable=True)
+    # name = db.Column(db.String(80), nullable=True)
+    # face_image = db.Column(LargeBinary, nullable=True)  # JPG/JPEG binary data
+    # user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+
     id = db.Column(db.Integer, primary_key=True)
-    face_id = db.Column(db.String(120), unique=True, nullable=True)
+    face_id = db.Column(db.String(120), nullable=True)          # no longer globally unique
     name = db.Column(db.String(80), nullable=True)
-    face_image = db.Column(LargeBinary, nullable=True)  # JPG/JPEG binary data
+    face_image = db.Column(db.LargeBinary, nullable=True)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+
+    __table_args__ = (
+        UniqueConstraint('user_id', 'face_id', name='uix_user_face'),
+    )
 
 
 # ---------------------------
@@ -668,7 +678,7 @@ def admin_delete_normal_user(user_id):
     target_user = User.query.get(user_id)
     if not target_user:
         return jsonify({"message": "User not found"}), 404
-    if target_user.type != 'normal':
+    if target_user.type != 'normal' and target_user.type != 'admin':
         return jsonify({"message": "Cannot delete an admin user via this endpoint"}), 400
     db.session.delete(target_user)
     db.session.commit()

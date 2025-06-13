@@ -16,6 +16,7 @@ const Action = () => {
   const [deviceStates, setDeviceStates] = useState({ door: false, light: false });
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
+  const [notificationsLog, setNotificationsLog] = useState([]);
 
   const deviceTypes = ['door', 'light'];
   const token = localStorage.getItem('access_token');
@@ -51,6 +52,10 @@ const Action = () => {
       );
 
       setMessage(`Command successfully sent: ${action} ${type}`);
+      setNotificationsLog(prev => [
+        { time: new Date().toLocaleTimeString(), text: `${action} ${type}` },
+        ...prev.slice(0, 4),
+      ]);
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to send command');
     }
@@ -67,7 +72,6 @@ const Action = () => {
       </div>
 
       <div style={styles.grid}>
-        {/* Device Cards */}
         {deviceTypes.map(type => {
           const isOn = deviceStates[type];
           const label = type.charAt(0).toUpperCase() + type.slice(1);
@@ -80,7 +84,7 @@ const Action = () => {
                 </div>
                 <h3 style={styles.cardTitle}>{label} Controller</h3>
               </div>
-              
+
               <div style={styles.cardBody}>
                 <div style={styles.statusIndicator(isOn)}>
                   {isOn ? 'Active' : 'Inactive'}
@@ -105,17 +109,59 @@ const Action = () => {
           );
         })}
 
+        {/* Notifications Card */}
+        <div style={styles.card}>
+          <div style={styles.cardHeader}>
+            <div style={styles.deviceIcon('notify')}>🔔</div>
+            <h3 style={styles.cardTitle}>Notifications</h3>
+          </div>
+          <div style={{ paddingLeft: '0.5rem' }}>
+            {notificationsLog.length === 0 ? (
+              <p style={{ color: colors.textMuted }}>No recent actions</p>
+            ) : (
+              notificationsLog.map((note, i) => (
+                <div key={i} style={styles.notificationItem}>
+                  <span style={styles.notificationTime}>{note.time}</span>
+                  <span>{note.text}</span>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+
         {/* System Status Panel */}
         <div style={styles.statusPanel}>
-
+          <div style={styles.panelTitle}>System Overview</div>
+          <div style={styles.statusItem}>
+            <span>Total Devices</span>
+            <span>2</span>
+          </div>
           <div style={styles.statusItem}>
             <span>Active Devices</span>
             <span>{Object.values(deviceStates).filter(Boolean).length}</span>
           </div>
+          <div style={styles.statusItem}>
+            <span>Signal Strength</span>
+            <div style={styles.signalBars}>
+              {[1, 2, 3, 4, 5].map(i => (
+                <div key={i} style={styles.signalBar(i)} />
+              ))}
+            </div>
+          </div>
+          <div style={styles.statusItem}>
+            <span>Last Synced</span>
+            <span>2 mins ago</span>
+          </div>
+          <div style={styles.statusItem}>
+            <span>Battery Health</span>
+            <div style={styles.batteryIndicator}>
+              <div style={styles.batteryLevel} />
+              <span>Good</span>
+            </div>
+          </div>
         </div>
       </div>
 
-      {/* Notifications Area */}
       <div style={styles.notifications}>
         {message && (
           <div style={styles.message}>
@@ -134,7 +180,6 @@ const Action = () => {
   );
 };
 
-// Style Definitions
 const styles = {
   container: {
     maxWidth: '1200px',
@@ -145,21 +190,18 @@ const styles = {
     boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)',
     fontFamily: "'Inter', sans-serif",
   },
-
   header: {
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: '2.5rem',
   },
-
   title: {
     fontSize: '2rem',
     fontWeight: 700,
     color: colors.primary,
     margin: 0,
   },
-
   statusBadge: {
     display: 'flex',
     alignItems: 'center',
@@ -169,56 +211,51 @@ const styles = {
     borderRadius: '2rem',
     fontSize: '0.9rem',
   },
-
   statusDot: {
     width: '10px',
     height: '10px',
     borderRadius: '50%',
     backgroundColor: colors.success,
   },
-
   grid: {
     display: 'grid',
     gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
     gap: '2rem',
     marginBottom: '2rem',
   },
-
   card: {
     backgroundColor: 'white',
     borderRadius: '0.75rem',
     padding: '1.5rem',
     boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
   },
-
   cardHeader: {
     display: 'flex',
     alignItems: 'center',
     gap: '1rem',
     marginBottom: '1.5rem',
   },
-
   deviceIcon: (type) => ({
     fontSize: '2.5rem',
     padding: '1rem',
     borderRadius: '0.5rem',
-    backgroundColor: type === 'door' ? '#FEEBC8' : '#C3DDFD',
+    backgroundColor:
+      type === 'door' ? '#FEEBC8'
+      : type === 'light' ? '#C3DDFD'
+      : '#FAF089',
   }),
-
   cardTitle: {
     fontSize: '1.25rem',
     fontWeight: 600,
     margin: 0,
     color: colors.primary,
   },
-
   cardBody: {
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: '1.5rem',
   },
-
   statusIndicator: (isOn) => ({
     fontSize: '1.1rem',
     fontWeight: 500,
@@ -226,21 +263,12 @@ const styles = {
     display: 'flex',
     alignItems: 'center',
     gap: '0.5rem',
-    '::before': {
-      content: '""',
-      width: '10px',
-      height: '10px',
-      borderRadius: '50%',
-      backgroundColor: isOn ? colors.success : colors.error,
-    },
   }),
-
   toggleContainer: {
     position: 'relative',
     width: '64px',
     height: '34px',
   },
-
   hiddenCheckbox: {
     position: 'absolute',
     opacity: 0,
@@ -249,7 +277,6 @@ const styles = {
     cursor: 'pointer',
     zIndex: 1,
   },
-
   toggleTrack: (isOn) => ({
     position: 'absolute',
     top: 0,
@@ -260,7 +287,6 @@ const styles = {
     borderRadius: '17px',
     transition: 'all 0.2s ease',
   }),
-
   toggleThumb: (isOn) => ({
     position: 'absolute',
     top: '2px',
@@ -272,7 +298,6 @@ const styles = {
     boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
     transition: 'all 0.2s ease',
   }),
-
   cardFooter: {
     display: 'flex',
     justifyContent: 'space-between',
@@ -280,76 +305,67 @@ const styles = {
     fontSize: '0.9rem',
     color: colors.textMuted,
   },
-
-  batteryIndicator: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '0.5rem',
-  },
-
-  batteryLevel: {
-    width: '20px',
-    height: '10px',
-    borderRadius: '2px',
-    backgroundColor: colors.success,
-    position: 'relative',
-    '::after': {
-      content: '""',
-      position: 'absolute',
-      right: '-3px',
-      top: '2px',
-      width: '3px',
-      height: '6px',
-      borderRadius: '0 2px 2px 0',
-      backgroundColor: colors.success,
-    },
-  },
-
   statusPanel: {
     backgroundColor: 'white',
     borderRadius: '0.75rem',
     padding: '1.5rem',
     gridColumn: '1 / -1',
   },
-
   panelTitle: {
     fontSize: '1.25rem',
     fontWeight: 600,
-    margin: '0 0 1.5rem 0',
+    margin: '0 0 1rem 0',
     color: colors.primary,
   },
-
   statusItem: {
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'center',
     padding: '1rem 0',
     borderBottom: `1px solid ${colors.border}`,
-    ':last-child': {
-      borderBottom: 'none',
-    },
   },
-
+  batteryIndicator: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '0.5rem',
+  },
+  batteryLevel: {
+    width: '20px',
+    height: '10px',
+    borderRadius: '2px',
+    backgroundColor: colors.success,
+    position: 'relative',
+    marginRight: '0.5rem',
+  },
   signalBars: {
     display: 'flex',
     gap: '3px',
     alignItems: 'flex-end',
     height: '20px',
   },
-
   signalBar: (i) => ({
     width: '4px',
     height: `${i * 5}px`,
     backgroundColor: i <= 3 ? colors.accent : colors.border,
     borderRadius: '2px',
   }),
-
+  notificationItem: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    borderBottom: `1px solid ${colors.border}`,
+    padding: '0.5rem 0',
+    fontSize: '0.95rem',
+  },
+  notificationTime: {
+    color: colors.textMuted,
+    marginRight: '1rem',
+    fontSize: '0.85rem',
+  },
   notifications: {
     display: 'flex',
     flexDirection: 'column',
     gap: '1rem',
   },
-
   message: {
     padding: '1rem',
     borderRadius: '0.5rem',
@@ -360,7 +376,6 @@ const styles = {
     gap: '0.75rem',
     fontSize: '1rem',
   },
-
   error: {
     padding: '1rem',
     borderRadius: '0.5rem',
@@ -371,7 +386,6 @@ const styles = {
     gap: '0.75rem',
     fontSize: '1rem',
   },
-
   messageIcon: {
     fontSize: '1.25rem',
   },
