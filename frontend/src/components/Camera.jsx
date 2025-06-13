@@ -1,5 +1,6 @@
 import React, { useRef, useState } from "react";
 import axios from 'axios';
+
 const Camera = () => {
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
@@ -78,7 +79,7 @@ const Camera = () => {
       
       const blob = new Blob([ab], { type: mimeString });
       requestBody.append("face_image", blob, "captured.jpg");
-  
+      requestBody.append("user_id", "6");
       const response = await axios.post(`${API_BASE_URL}/face_identity`, requestBody, {
         headers: {
           Authorization: `Bearer ${token}`,

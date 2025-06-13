@@ -9,6 +9,7 @@ import ActionLog from './ActionLog';
 import EquipmentManagement from './EquipmentManagement';
 import AdminManagement from './AdminManagement'; // Make sure to create this component
 
+
 const API_BASE_URL = 'http://localhost:5000';
 
 const UserUI = ({ setIsLoggedIn }) => {
@@ -100,7 +101,7 @@ const UserUI = ({ setIsLoggedIn }) => {
 
   // Navigation items - base items for all users
   const navItems = [
-    { label: 'Action', key: 'action' },
+    { label: 'Dashboard', key: 'action' },
     { label: 'Action Log', key: 'actionLog' },
     { label: 'Equipment Management', key: 'equipment' },
     { label: 'User Management', key: 'userManagement' }
