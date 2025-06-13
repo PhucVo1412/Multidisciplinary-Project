@@ -668,7 +668,7 @@ def admin_delete_normal_user(user_id):
     target_user = User.query.get(user_id)
     if not target_user:
         return jsonify({"message": "User not found"}), 404
-    if target_user.type != 'user':
+    if target_user.type != 'normal':
         return jsonify({"message": "Cannot delete an admin user via this endpoint"}), 400
     db.session.delete(target_user)
     db.session.commit()
