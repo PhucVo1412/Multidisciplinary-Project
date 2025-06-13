@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 
 const colors = {
@@ -21,6 +21,27 @@ const Action = () => {
   const deviceTypes = ['door', 'light'];
   const token = localStorage.getItem('access_token');
   const deviceId = 1;
+
+  const fetchLogs = async () => {
+    try {
+      const response = await axios.get('http://localhost:5000/open_door_logs/latest', {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      });
+      const formattedLogs = response.data.map(log => ({
+        time: new Date(log.timestamp).toLocaleTimeString(),
+        text: `Log: ${log.name}`
+      }));
+      setNotificationsLog(formattedLogs);
+    } catch (err) {
+      console.error('Error fetching logs:', err);
+    }
+  };
+
+  useEffect(() => {
+    fetchLogs();
+  }, []);
 
   const handleToggle = async (type) => {
     const newState = !deviceStates[type];
@@ -52,10 +73,7 @@ const Action = () => {
       );
 
       setMessage(`Command successfully sent: ${action} ${type}`);
-      setNotificationsLog(prev => [
-        { time: new Date().toLocaleTimeString(), text: `${action} ${type}` },
-        ...prev.slice(0, 4),
-      ]);
+      await fetchLogs(); // refresh notifications after action
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to send command');
     }
@@ -103,7 +121,7 @@ const Action = () => {
               </div>
 
               <div style={styles.cardFooter}>
-                <span style={styles.lastUpdated}>Device Id: 1</span>
+                {/* <span style={styles.lastUpdated}>Device Id: 1</span> */}
               </div>
             </div>
           );
@@ -139,25 +157,6 @@ const Action = () => {
           <div style={styles.statusItem}>
             <span>Active Devices</span>
             <span>{Object.values(deviceStates).filter(Boolean).length}</span>
-          </div>
-          <div style={styles.statusItem}>
-            <span>Signal Strength</span>
-            <div style={styles.signalBars}>
-              {[1, 2, 3, 4, 5].map(i => (
-                <div key={i} style={styles.signalBar(i)} />
-              ))}
-            </div>
-          </div>
-          <div style={styles.statusItem}>
-            <span>Last Synced</span>
-            <span>2 mins ago</span>
-          </div>
-          <div style={styles.statusItem}>
-            <span>Battery Health</span>
-            <div style={styles.batteryIndicator}>
-              <div style={styles.batteryLevel} />
-              <span>Good</span>
-            </div>
           </div>
         </div>
       </div>

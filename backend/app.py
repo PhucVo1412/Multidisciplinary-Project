@@ -695,6 +695,18 @@ def admin_delete_normal_user(user_id):
     db.session.commit()
     return jsonify({"message": "Normal user deleted successfully"}), 200
 
+@app.route('/open_door_logs/latest', methods=['GET'])
+@jwt_required()
+def get_latest_open_door_logs():
+    logs = OpenDoorLog.query.order_by(OpenDoorLog.timestamp.desc()).limit(5).all()
+    output = [{
+        "id": log.id,
+        "name": log.name,
+        "timestamp": log.timestamp.isoformat()
+    } for log in logs]
+    return jsonify(output), 200
+
+
 ###############################################################################
 # AI module (Adafruit IO Image Processing)
 ###############################################################################

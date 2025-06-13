@@ -375,7 +375,6 @@ const EquipmentManagement = () => {
               disabled={isCreating}
             >
               <option value="Door">Door</option>
-              <option value="LedLCD">Led/LCD</option>
               <option value="Light">Light</option>
             </select>
             {formErrors.name && (
@@ -706,7 +705,6 @@ const EquipmentManagement = () => {
             >
               <option value="">All Types</option>
               <option value="Door">Door</option>
-              <option value="LedLCD">Led/LCD</option>
               <option value="Light">Light</option>
             </select>
           </div>
