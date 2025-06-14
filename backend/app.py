@@ -758,16 +758,17 @@ def img_message(client, feed_id, payload):
                                 break
                         except Exception as e:
                             print("Error in verification:", e)
+                # os.remove(img_name)
+            if not flag:
+                client.publish(aio.AIO_FEED, "Unknown Person")
                 img_data = None
                 with open(img_name, "rb") as image_file:
                     img_data = image_file.read()
-                os.remove(img_name)
-            if not flag:
-                client.publish(aio.AIO_FEED, "Unknown Person")
                 with app.app_context():
                     if img_data:
-                        db.session.add(OpenDoorLog(name="Unknown Person", timestamp=datetime.now(VIETNAM_TZ)), unknown_person=img_data)
-                    db.session.commit()
+                        print(type(img_data))
+                        db.session.add(OpenDoorLog(name="Unknown Person", timestamp=datetime.now(VIETNAM_TZ), unknown_person=img_data))
+                        db.session.commit()
 
 ###############################################################################
 # RUN THE APP
