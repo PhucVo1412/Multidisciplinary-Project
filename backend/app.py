@@ -133,6 +133,7 @@ class OpenDoorLog(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(80), nullable=True)
     timestamp = db.Column(db.DateTime, default=lambda: datetime.now(VIETNAM_TZ))
+    unknown_person = db.Column(db.LargeBinary, nullable=True)  # Optional: store image of unknown person
 
 # ---------------------------
 # Place Model
@@ -757,11 +758,15 @@ def img_message(client, feed_id, payload):
                                 break
                         except Exception as e:
                             print("Error in verification:", e)
+                img_data = None
+                with open(img_name, "rb") as image_file:
+                    img_data = image_file.read()
                 os.remove(img_name)
             if not flag:
                 client.publish(aio.AIO_FEED, "Unknown Person")
                 with app.app_context():
-                    db.session.add(OpenDoorLog(name="Unknown Person", timestamp=datetime.now(VIETNAM_TZ)))
+                    if img_data:
+                        db.session.add(OpenDoorLog(name="Unknown Person", timestamp=datetime.now(VIETNAM_TZ)), unknown_person=img_data)
                     db.session.commit()
 
 ###############################################################################
