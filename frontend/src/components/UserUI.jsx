@@ -95,7 +95,8 @@ const UserUI = ({ setIsLoggedIn }) => {
       case 'adminManagement':
         return <AdminManagement />;
       default:
-        return <h2 style={{ padding: '20px', color: '#333' }}>Welcome to the Dashboard</h2>;
+        // return <h2 style={{ padding: '20px', color: '#333' }}>Welcome to the Dashboard</h2>;
+        return <Action />
     }
   };
 

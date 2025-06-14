@@ -16,66 +16,65 @@ const Action = () => {
   const [deviceStates, setDeviceStates] = useState({ door: false, light: false });
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
-  const [notificationsLog, setNotificationsLog] = useState([]);
+  const [latestUnknownLog, setLatestUnknownLog] = useState(null);
+  const [systemOverviewLogs, setSystemOverviewLogs] = useState([]);
 
-  const deviceTypes = ['door', 'light'];
   const token = localStorage.getItem('access_token');
   const deviceId = 1;
+  const deviceTypes = ['door', 'light'];
 
   const fetchLogs = async () => {
     try {
-      const response = await axios.get('http://localhost:5000/open_door_logs/latest', {
-        headers: {
-          Authorization: `Bearer ${token}`
-        }
+      const res = await axios.get('http://localhost:5000/open_door_logs/latest', {
+        headers: { Authorization: `Bearer ${token}` }
       });
-      const formattedLogs = response.data.map(log => ({
+
+      const logs = res.data.map(log => ({
         time: new Date(log.timestamp).toLocaleTimeString(),
-        text: `Log: ${log.name}`
+        name: log.name,
+        image: log.unknown_person_image || null,
       }));
-      setNotificationsLog(formattedLogs);
+
+      const unknown = logs.find(log => log.image);
+      setLatestUnknownLog(unknown || null);
+
+      const known = logs.filter(log => log.name !== 'Unknown').slice(0, 2);
+      setSystemOverviewLogs(known);
     } catch (err) {
-      console.error('Error fetching logs:', err);
+      console.error("Failed to fetch logs:", err);
     }
   };
 
-  useEffect(() => {
-    fetchLogs();
-  }, []);
+  useEffect(() => { fetchLogs(); }, []);
 
   const handleToggle = async (type) => {
     const newState = !deviceStates[type];
-    const action =
-      type === 'door'
-        ? newState ? 'open' : 'close'
-        : newState ? 'turn on' : 'turn off';
+    const action = type === 'door'
+      ? (newState ? 'open' : 'close')
+      : (newState ? 'turn on' : 'turn off');
 
     setDeviceStates(prev => ({ ...prev, [type]: newState }));
-    setError('');
     setMessage('');
+    setError('');
 
     try {
-      await axios.post(
-        'http://localhost:5000/controls',
-        {
-          action: `${action} ${type}`,
-          device_type: type,
-          device_id: deviceId,
-          equipment_id: deviceId,
-          status: 'pending'
-        },
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          }
+      await axios.post('http://localhost:5000/controls', {
+        action: `${action} ${type}`,
+        device_type: type,
+        device_id: deviceId,
+        equipment_id: deviceId,
+        status: 'pending'
+      }, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json'
         }
-      );
+      });
 
-      setMessage(`Command successfully sent: ${action} ${type}`);
-      await fetchLogs(); // refresh notifications after action
+      setMessage(`Command sent: ${action} ${type}`);
+      await fetchLogs();
     } catch (err) {
-      setError(err.response?.data?.message || 'Failed to send command');
+      setError(err.response?.data?.message || 'Command failed');
     }
   };
 
@@ -119,35 +118,41 @@ const Action = () => {
                   </div>
                 </div>
               </div>
-
-              <div style={styles.cardFooter}>
-                {/* <span style={styles.lastUpdated}>Device Id: 1</span> */}
-              </div>
             </div>
           );
         })}
 
-        {/* Notifications Card */}
         <div style={styles.card}>
           <div style={styles.cardHeader}>
             <div style={styles.deviceIcon('notify')}>🔔</div>
-            <h3 style={styles.cardTitle}>Notifications</h3>
+            <h3 style={styles.cardTitle}>Warning</h3>
           </div>
           <div style={{ paddingLeft: '0.5rem' }}>
-            {notificationsLog.length === 0 ? (
-              <p style={{ color: colors.textMuted }}>No recent actions</p>
+            {!latestUnknownLog ? (
+              <p style={{ color: colors.textMuted }}>No unknown person detected</p>
             ) : (
-              notificationsLog.map((note, i) => (
-                <div key={i} style={styles.notificationItem}>
-                  <span style={styles.notificationTime}>{note.time}</span>
-                  <span>{note.text}</span>
+              <div style={{ ...styles.notificationItem, flexDirection: 'column', alignItems: 'flex-start' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%' }}>
+                  <span style={styles.notificationTime}>{latestUnknownLog.time}</span>
+                  <span>Unknown detected</span>
                 </div>
-              ))
+                {latestUnknownLog.image && (
+                  <img
+                    src={latestUnknownLog.image}
+                    alt="Unknown Person"
+                    style={{
+                      marginTop: '0.5rem',
+                      maxWidth: '100%',
+                      borderRadius: '8px',
+                      border: `1px solid ${colors.border}`
+                    }}
+                  />
+                )}
+              </div>
             )}
           </div>
         </div>
 
-        {/* System Status Panel */}
         <div style={styles.statusPanel}>
           <div style={styles.panelTitle}>System Overview</div>
           <div style={styles.statusItem}>
@@ -158,20 +163,31 @@ const Action = () => {
             <span>Active Devices</span>
             <span>{Object.values(deviceStates).filter(Boolean).length}</span>
           </div>
+          <div style={{ marginTop: '1rem' }}>
+            <h4 style={{ ...styles.panelTitle, fontSize: '1rem' }}>Open door log</h4>
+            {systemOverviewLogs.length === 0 ? (
+              <p style={{ color: colors.textMuted }}>No known person entries yet</p>
+            ) : (
+              systemOverviewLogs.map((log, index) => (
+                <div key={index} style={styles.statusItem}>
+                  <span>{log.name}</span>
+                  <span>{log.time}</span>
+                </div>
+              ))
+            )}
+          </div>
         </div>
       </div>
 
       <div style={styles.notifications}>
         {message && (
           <div style={styles.message}>
-            <span style={styles.messageIcon}>✓</span>
-            {message}
+            <span style={styles.messageIcon}>✓</span> {message}
           </div>
         )}
         {error && (
           <div style={styles.error}>
-            <span style={styles.messageIcon}>⚠</span>
-            {error}
+            <span style={styles.messageIcon}>⚠</span> {error}
           </div>
         )}
       </div>
@@ -239,9 +255,9 @@ const styles = {
     padding: '1rem',
     borderRadius: '0.5rem',
     backgroundColor:
-      type === 'door' ? '#FEEBC8'
-      : type === 'light' ? '#C3DDFD'
-      : '#FAF089',
+      type === 'door' ? '#FEEBC8' :
+      type === 'light' ? '#C3DDFD' :
+      '#FAF089',
   }),
   cardTitle: {
     fontSize: '1.25rem',
@@ -259,9 +275,6 @@ const styles = {
     fontSize: '1.1rem',
     fontWeight: 500,
     color: isOn ? colors.success : colors.error,
-    display: 'flex',
-    alignItems: 'center',
-    gap: '0.5rem',
   }),
   toggleContainer: {
     position: 'relative',
@@ -297,13 +310,6 @@ const styles = {
     boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
     transition: 'all 0.2s ease',
   }),
-  cardFooter: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    fontSize: '0.9rem',
-    color: colors.textMuted,
-  },
   statusPanel: {
     backgroundColor: 'white',
     borderRadius: '0.75rem',
@@ -313,7 +319,7 @@ const styles = {
   panelTitle: {
     fontSize: '1.25rem',
     fontWeight: 600,
-    margin: '0 0 1rem 0',
+    marginBottom: '1rem',
     color: colors.primary,
   },
   statusItem: {
@@ -323,42 +329,16 @@ const styles = {
     padding: '1rem 0',
     borderBottom: `1px solid ${colors.border}`,
   },
-  batteryIndicator: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '0.5rem',
-  },
-  batteryLevel: {
-    width: '20px',
-    height: '10px',
-    borderRadius: '2px',
-    backgroundColor: colors.success,
-    position: 'relative',
-    marginRight: '0.5rem',
-  },
-  signalBars: {
-    display: 'flex',
-    gap: '3px',
-    alignItems: 'flex-end',
-    height: '20px',
-  },
-  signalBar: (i) => ({
-    width: '4px',
-    height: `${i * 5}px`,
-    backgroundColor: i <= 3 ? colors.accent : colors.border,
-    borderRadius: '2px',
-  }),
   notificationItem: {
-    display: 'flex',
-    justifyContent: 'space-between',
+    width: '100%',
     borderBottom: `1px solid ${colors.border}`,
     padding: '0.5rem 0',
     fontSize: '0.95rem',
   },
   notificationTime: {
     color: colors.textMuted,
-    marginRight: '1rem',
     fontSize: '0.85rem',
+    marginRight: '1rem',
   },
   notifications: {
     display: 'flex',

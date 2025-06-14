@@ -695,16 +695,24 @@ def admin_delete_normal_user(user_id):
     db.session.delete(target_user)
     db.session.commit()
     return jsonify({"message": "Normal user deleted successfully"}), 200
+import base64
 
 @app.route('/open_door_logs/latest', methods=['GET'])
 @jwt_required()
 def get_latest_open_door_logs():
     logs = OpenDoorLog.query.order_by(OpenDoorLog.timestamp.desc()).limit(5).all()
-    output = [{
-        "id": log.id,
-        "name": log.name,
-        "timestamp": log.timestamp.isoformat()
-    } for log in logs]
+    output = []
+    for log in logs:
+        log_data = {
+            "id": log.id,
+            "name": log.name,
+            "timestamp": log.timestamp.isoformat()
+        }
+        if log.unknown_person:
+            encoded_image = base64.b64encode(log.unknown_person).decode('utf-8')
+            log_data["unknown_person_image"] = f"data:image/jpeg;base64,{encoded_image}"
+        output.append(log_data)
+
     return jsonify(output), 200
 
 
