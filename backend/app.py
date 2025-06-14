@@ -606,10 +606,11 @@ def create_control():
     db.session.flush()
 
     try:
-        if action == "Open" or action == "Close":
-            client.publish(feed, "ON") if action == "Open" else client.publish(feed, "OFF")  
+        if action == "open door" or action == "close door":
+            client.publish(feed, "ON") if action == "open door" else client.publish(feed, "OFF")  
+            print(f"Published to {feed}: {'ON' if action == 'open door' else 'OFF'}")
         else:
-            client.publish(feed, "ON") if action == "Turn on" else client.publish(feed, "OFF")
+            client.publish(feed, "ON") if action == "turn on light" else client.publish(feed, "OFF")
         control.status     = 'sent'
         control.start_time = datetime.now(VIETNAM_TZ)
         db.session.commit()
