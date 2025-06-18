@@ -3,7 +3,7 @@
   "info": {
     "title": "Comprehensive Equipment & Place API",
     "version": "1.0.0",
-    "description": "API documentation for a Flask application that includes Users (with FaceIdentity storing face image data), Equipment (and sub-entities like LedLCD, Light, Door), Control actions, and Place (location) endpoints."
+    "description": "API documentation for a Flask application that includes Users (with FaceIdentity storing face image data), Equipment (and sub-entities like Light, Door), Control actions, and Place (location) endpoints."
   },
   "servers": [
     {
@@ -105,7 +105,7 @@
       "post": {
         "summary": "Create or update FaceIdentity",
         "description": "Stores or updates the user's face identity with a face_id, name, and image data. Use multipart/form-data for file upload.",
-        "security": [ { "BearerAuth": [] } ],
+        "security": [{ "BearerAuth": [] }],
         "requestBody": {
           "required": true,
           "content": {
@@ -123,7 +123,7 @@
       "get": {
         "summary": "Get FaceIdentity",
         "description": "Retrieves the user's face identity. The face image is returned as a Base64-encoded string.",
-        "security": [ { "BearerAuth": [] } ],
+        "security": [{ "BearerAuth": [] }],
         "responses": {
           "200": {
             "description": "FaceIdentity details",
@@ -141,7 +141,7 @@
       "post": {
         "summary": "Create a Place",
         "description": "Creates a new Place (room and address).",
-        "security": [ { "BearerAuth": [] } ],
+        "security": [{ "BearerAuth": [] }],
         "requestBody": {
           "required": true,
           "content": {
@@ -158,7 +158,7 @@
       "get": {
         "summary": "List all Places",
         "description": "Retrieves a list of all Place records.",
-        "security": [ { "BearerAuth": [] } ],
+        "security": [{ "BearerAuth": [] }],
         "responses": {
           "200": {
             "description": "Array of places",
@@ -187,7 +187,7 @@
       "get": {
         "summary": "Get a Place",
         "description": "Retrieves a Place along with its associated equipment.",
-        "security": [ { "BearerAuth": [] } ],
+        "security": [{ "BearerAuth": [] }],
         "responses": {
           "200": {
             "description": "Place details",
@@ -203,7 +203,7 @@
       "put": {
         "summary": "Update a Place",
         "description": "Updates a Place's room and address.",
-        "security": [ { "BearerAuth": [] } ],
+        "security": [{ "BearerAuth": [] }],
         "requestBody": {
           "required": true,
           "content": {
@@ -220,7 +220,7 @@
       "delete": {
         "summary": "Delete a Place",
         "description": "Deletes the specified Place.",
-        "security": [ { "BearerAuth": [] } ],
+        "security": [{ "BearerAuth": [] }],
         "responses": {
           "200": { "description": "Place deleted" },
           "404": { "description": "Place not found" }
@@ -231,7 +231,7 @@
       "post": {
         "summary": "Create Equipment",
         "description": "Creates a new Equipment record, optionally linked to a Place.",
-        "security": [ { "BearerAuth": [] } ],
+        "security": [{ "BearerAuth": [] }],
         "requestBody": {
           "required": true,
           "content": {
@@ -248,7 +248,7 @@
       "get": {
         "summary": "List all Equipment",
         "description": "Retrieves all Equipment records.",
-        "security": [ { "BearerAuth": [] } ],
+        "security": [{ "BearerAuth": [] }],
         "responses": {
           "200": {
             "description": "Array of equipment",
@@ -277,7 +277,7 @@
       "get": {
         "summary": "Get Equipment",
         "description": "Retrieves an Equipment record with its sub-devices.",
-        "security": [ { "BearerAuth": [] } ],
+        "security": [{ "BearerAuth": [] }],
         "responses": {
           "200": {
             "description": "Equipment details",
@@ -293,7 +293,7 @@
       "put": {
         "summary": "Update Equipment",
         "description": "Updates an Equipment record.",
-        "security": [ { "BearerAuth": [] } ],
+        "security": [{ "BearerAuth": [] }],
         "requestBody": {
           "required": true,
           "content": {
@@ -310,64 +310,9 @@
       "delete": {
         "summary": "Delete Equipment",
         "description": "Deletes the specified Equipment record.",
-        "security": [ { "BearerAuth": [] } ],
+        "security": [{ "BearerAuth": [] }],
         "responses": {
           "200": { "description": "Equipment deleted" },
-          "404": { "description": "Equipment not found" }
-        }
-      }
-    },
-    "/equipment/{equipment_id}/ledlcd": {
-      "post": {
-        "summary": "Create LedLCD",
-        "description": "Creates a new LedLCD sub-device for the specified Equipment.",
-        "security": [ { "BearerAuth": [] } ],
-        "parameters": [
-          {
-            "name": "equipment_id",
-            "in": "path",
-            "required": true,
-            "schema": { "type": "integer" }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": { "$ref": "#/components/schemas/LedLCDInput" }
-            }
-          }
-        },
-        "responses": {
-          "201": { "description": "LedLCD created" },
-          "400": { "description": "Missing name" },
-          "404": { "description": "Equipment not found" }
-        }
-      },
-      "get": {
-        "summary": "List LedLCDs",
-        "description": "Retrieves all LedLCD sub-devices for a given Equipment.",
-        "security": [ { "BearerAuth": [] } ],
-        "parameters": [
-          {
-            "name": "equipment_id",
-            "in": "path",
-            "required": true,
-            "schema": { "type": "integer" }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Array of LedLCD devices",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": { "$ref": "#/components/schemas/LedLCD" }
-                }
-              }
-            }
-          },
           "404": { "description": "Equipment not found" }
         }
       }
@@ -376,7 +321,7 @@
       "post": {
         "summary": "Create Light",
         "description": "Creates a new Light sub-device for the specified Equipment.",
-        "security": [ { "BearerAuth": [] } ],
+        "security": [{ "BearerAuth": [] }],
         "parameters": [
           {
             "name": "equipment_id",
@@ -389,7 +334,7 @@
           "required": true,
           "content": {
             "application/json": {
-              "schema": { "$ref": "#/components/schemas/LightInput" }
+              "schema": { "$ref": "#/components.schemas/LightInput" }
             }
           }
         },
@@ -401,7 +346,7 @@
       "get": {
         "summary": "List Lights",
         "description": "Retrieves all Light sub-devices for a given Equipment.",
-        "security": [ { "BearerAuth": [] } ],
+        "security": [{ "BearerAuth": [] }],
         "parameters": [
           {
             "name": "equipment_id",
@@ -430,7 +375,7 @@
       "post": {
         "summary": "Create Door",
         "description": "Creates a new Door sub-device for the specified Equipment.",
-        "security": [ { "BearerAuth": [] } ],
+        "security": [{ "BearerAuth": [] }],
         "parameters": [
           {
             "name": "equipment_id",
@@ -455,7 +400,7 @@
       "get": {
         "summary": "List Doors",
         "description": "Retrieves all Door sub-devices for a given Equipment.",
-        "security": [ { "BearerAuth": [] } ],
+        "security": [{ "BearerAuth": [] }],
         "parameters": [
           {
             "name": "equipment_id",
@@ -482,9 +427,9 @@
     },
     "/controls": {
       "post": {
-        "summary": "Create a Control action",
-        "description": "Creates a new control action (e.g. open door, turn LED on) for the logged-in user.",
-        "security": [ { "BearerAuth": [] } ],
+        "summary": "Create and send a control action",
+        "description": "Persists a control request and immediately publishes it to the Adafruit IO feed for door or light.",
+        "security": [{ "BearerAuth": [] }],
         "requestBody": {
           "required": true,
           "content": {
@@ -494,14 +439,28 @@
           }
         },
         "responses": {
-          "201": { "description": "Control created" },
-          "400": { "description": "Missing required fields" }
+          "201": {
+            "description": "Control created and sent",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": { "type": "string" },
+                    "control": { "$ref": "#/components/schemas/Control" }
+                  }
+                }
+              }
+            }
+          },
+          "400": { "description": "Missing or invalid fields" },
+          "500": { "description": "Failed to send command" }
         }
       },
       "get": {
         "summary": "List Control actions",
         "description": "Retrieves all control actions for the logged-in user.",
-        "security": [ { "BearerAuth": [] } ],
+        "security": [{ "BearerAuth": [] }],
         "responses": {
           "200": {
             "description": "Array of control actions",
@@ -514,27 +473,6 @@
               }
             }
           }
-        }
-      }
-    },
-    "/controls/{control_id}/execute": {
-      "parameters": [
-        {
-          "name": "control_id",
-          "in": "path",
-          "required": true,
-          "schema": { "type": "integer" },
-          "description": "ID of the Control action"
-        }
-      ],
-      "post": {
-        "summary": "Execute a Control action",
-        "description": "Publishes the control action to the appropriate Adafruit IO feed.",
-        "security": [ { "BearerAuth": [] } ],
-        "responses": {
-          "200": { "description": "Command sent successfully" },
-          "400": { "description": "Unsupported device type" },
-          "404": { "description": "Control not found or not owned by user" }
         }
       }
     },
@@ -551,7 +489,7 @@
       "put": {
         "summary": "Update a Control action",
         "description": "Updates an existing control action.",
-        "security": [ { "BearerAuth": [] } ],
+        "security": [{ "BearerAuth": [] }],
         "requestBody": {
           "required": false,
           "content": {
@@ -568,7 +506,7 @@
       "delete": {
         "summary": "Delete a Control action",
         "description": "Deletes the specified control action.",
-        "security": [ { "BearerAuth": [] } ],
+        "security": [{ "BearerAuth": [] }],
         "responses": {
           "200": { "description": "Control deleted" },
           "404": { "description": "Control not found" }
@@ -588,12 +526,33 @@
       "delete": {
         "summary": "Delete a Normal User",
         "description": "Allows an admin to delete a normal user.",
-        "security": [ { "BearerAuth": [] } ],
+        "security": [{ "BearerAuth": [] }],
         "responses": {
           "200": { "description": "Normal user deleted successfully" },
           "400": { "description": "Cannot delete an admin user" },
           "403": { "description": "Unauthorized: admin access required" },
           "404": { "description": "User not found" }
+        }
+      }
+    },
+    "/admin/users": {
+      "get": {
+        "summary": "List all users (summary)",
+        "description": "Admin-only: returns only id, name, type and phone of each user.",
+        "security": [{ "BearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Array of user summaries",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": { "$ref": "#/components/schemas/UserSummary" }
+                }
+              }
+            }
+          },
+          "403": { "description": "Unauthorized: admin access required" }
         }
       }
     }
@@ -613,7 +572,7 @@
           "access": { "type": "string", "example": "full" },
           "admin_token": { "type": "string", "example": "mySuperSecretAdminToken123" }
         },
-        "required": ["username", "password"]
+        "required": ["username","password"]
       },
       "LoginUser": {
         "type": "object",
@@ -621,7 +580,7 @@
           "username": { "type": "string", "example": "john_doe" },
           "password": { "type": "string", "example": "secret123" }
         },
-        "required": ["username", "password"]
+        "required": ["username","password"]
       },
       "LoginResponse": {
         "type": "object",
@@ -634,9 +593,9 @@
         "properties": {
           "face_id": { "type": "string", "example": "FACE123" },
           "name": { "type": "string", "example": "John Doe" },
-          "face_image": { "type": "string", "format": "byte", "example": "Base64EncodedImageData" }
+          "face_image": { "type": "string","format":"byte","example":"Base64EncodedImageData" }
         },
-        "required": ["face_id"]
+        "required":["face_id"]
       },
       "FaceIdentity": {
         "type": "object",
@@ -644,159 +603,147 @@
           "id": { "type": "integer" },
           "face_id": { "type": "string" },
           "name": { "type": "string" },
-          "face_image": { "type": "string", "format": "byte" },
+          "face_image": { "type": "string","format":"byte" },
           "user_id": { "type": "integer" }
         }
       },
       "PlaceInput": {
-        "type": "object",
-        "properties": {
-          "room": { "type": "string", "example": "Room 101" },
-          "address": { "type": "string", "example": "123 Main St" }
+        "type":"object",
+        "properties":{
+          "room":{"type":"string","example":"Room 101"},
+          "address":{"type":"string","example":"123 Main St"}
         }
       },
       "Place": {
-        "type": "object",
-        "properties": {
-          "id": { "type": "integer" },
-          "room": { "type": "string" },
-          "address": { "type": "string" }
+        "type":"object",
+        "properties":{
+          "id":{"type":"integer"},
+          "room":{"type":"string"},
+          "address":{"type":"string"}
         }
       },
       "PlaceWithEquipment": {
-        "allOf": [
-          { "$ref": "#/components/schemas/Place" },
+        "allOf":[
+          { "$ref":"#/components/schemas/Place" },
           {
-            "type": "object",
-            "properties": {
-              "equipment": {
-                "type": "array",
-                "items": { "$ref": "#/components/schemas/Equipment" }
+            "type":"object",
+            "properties":{
+              "equipment":{
+                "type":"array",
+                "items":{ "$ref":"#/components/schemas/Equipment" }
               }
             }
           }
         ]
       },
       "EquipmentInput": {
-        "type": "object",
-        "properties": {
-          "name": { "type": "string", "example": "Air Conditioner" },
-          "status": { "type": "string", "example": "active" },
-          "place_id": { "type": "integer", "example": 1 }
+        "type":"object",
+        "properties":{
+          "name":{"type":"string","example":"Air Conditioner"},
+          "status":{"type":"string","example":"active"},
+          "place_id":{"type":"integer","example":1}
         },
-        "required": ["name"]
+        "required":["name"]
       },
       "Equipment": {
-        "type": "object",
-        "properties": {
-          "id": { "type": "integer" },
-          "name": { "type": "string" },
-          "status": { "type": "string" },
-          "start": { "type": "string", "format": "date-time" },
-          "end": { "type": "string", "format": "date-time", "nullable": true },
-          "place_id": { "type": "integer", "nullable": true }
+        "type":"object",
+        "properties":{
+          "id":{"type":"integer"},
+          "name":{"type":"string"},
+          "status":{"type":"string"},
+          "start":{"type":"string","format":"date-time"},
+          "end":{"type":"string","format":"date-time","nullable":true},
+          "place_id":{"type":"integer","nullable":true}
         }
       },
       "EquipmentWithSubDevices": {
-        "allOf": [
-          { "$ref": "#/components/schemas/Equipment" },
+        "allOf":[
+          { "$ref":"#/components/schemas/Equipment" },
           {
-            "type": "object",
-            "properties": {
-              "led_lcds": {
-                "type": "array",
-                "items": { "$ref": "#/components/schemas/LedLCD" }
+            "type":"object",
+            "properties":{
+              "lights":{
+                "type":"array",
+                "items":{ "$ref":"#/components/schemas/Light" }
               },
-              "lights": {
-                "type": "array",
-                "items": { "$ref": "#/components/schemas/Light" }
-              },
-              "doors": {
-                "type": "array",
-                "items": { "$ref": "#/components/schemas/Door" }
+              "doors":{
+                "type":"array",
+                "items":{ "$ref":"#/components/schemas/Door" }
               }
             }
           }
         ]
       },
-      "LedLCDInput": {
-        "type": "object",
-        "properties": {
-          "name": { "type": "string", "example": "LCD Display 1" }
-        },
-        "required": ["name"]
-      },
-      "LedLCD": {
-        "type": "object",
-        "properties": {
-          "id": { "type": "integer" },
-          "name": { "type": "string" },
-          "equipment_id": { "type": "integer" }
-        }
-      },
       "LightInput": {
-        "type": "object",
-        "properties": {
-          "switch": { "type": "boolean", "example": true }
+        "type":"object",
+        "properties":{
+          "switch":{"type":"boolean","example":true}
         }
       },
       "Light": {
-        "type": "object",
-        "properties": {
-          "id": { "type": "integer" },
-          "switch": { "type": "boolean" },
-          "equipment_id": { "type": "integer" }
+        "type":"object",
+        "properties":{
+          "id":{"type":"integer"},
+          "switch":{"type":"boolean"},
+          "equipment_id":{"type":"integer"}
         }
       },
       "DoorInput": {
-        "type": "object",
-        "properties": {
-          "servo": { "type": "string", "example": "open" }
+        "type":"object",
+        "properties":{
+          "servo":{"type":"string","example":"open"}
         }
       },
       "Door": {
-        "type": "object",
-        "properties": {
-          "id": { "type": "integer" },
-          "servo": { "type": "string" },
-          "equipment_id": { "type": "integer" }
+        "type":"object",
+        "properties":{
+          "id":{"type":"integer"},
+          "servo":{"type":"string"},
+          "equipment_id":{"type":"integer"}
         }
       },
       "ControlInput": {
-        "type": "object",
-        "properties": {
-          "action": { "type": "string", "example": "open door" },
-          "device_type": { "type": "string", "example": "door" },
-          "device_id": { "type": "integer", "example": 3 },
-          "equipment_id": { "type": "integer", "example": 1 },
-          "status": { "type": "string", "example": "pending" }
+        "type":"object",
+        "properties":{  
+          "action":{"type":"string","example":"open door"},
+          "device_type":{"type":"string","example":"door"},
+          "device_id":{"type":"integer","example":3},
+          "equipment_id":{"type":"integer","example":1},
+          "status":{"type":"string","example":"pending"}
         },
-        "required": ["action", "device_type", "device_id"]
+        "required":["action","device_type","device_id"]
       },
       "Control": {
-        "type": "object",
-        "properties": {
-          "id": { "type": "integer" },
-          "action": { "type": "string" },
-          "device_type": { "type": "string" },
-          "device_id": { "type": "integer" },
-          "status": { "type": "string" },
-          "start_time": { "type": "string", "format": "date-time" },
-          "end_time": { "type": "string", "format": "date-time", "nullable": true },
-          "user_id": { "type": "integer" },
-          "equipment_id": { "type": "integer", "nullable": true }
+        "type":"object",
+        "properties":{
+          "id":{"type":"integer"},
+          "action":{"type":"string"},
+          "device_type":{"type":"string"},
+          "device_id":{"type":"integer"},
+          "status":{"type":"string"},
+          "start_time":{"type":"string","format":"date-time"},
+          "end_time":{"type":"string","format":"date-time","nullable":true},
+          "user_id":{"type":"integer"},
+          "equipment_id":{"type":"integer","nullable":true}
+        }
+      },
+      "UserSummary": {
+        "type":"object",
+        "properties":{
+          "id":{"type":"integer"},
+          "name":{"type":"string","nullable":true},
+          "type":{"type":"string","enum":["normal","admin"]},
+          "phone":{"type":"string","nullable":true}
         }
       }
     },
     "securitySchemes": {
       "BearerAuth": {
-        "type": "http",
-        "scheme": "bearer",
-        "bearerFormat": "JWT"
+        "type":"http",
+        "scheme":"bearer",
+        "bearerFormat":"JWT"
       }
     }
   },
-  "security": [
-    { "BearerAuth": [] }
-  ]
+  "security":[{"BearerAuth":[]}]
 }

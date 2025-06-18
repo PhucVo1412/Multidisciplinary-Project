@@ -1,4 +1,5 @@
 from flask import Flask, request, jsonify
+from flask_migrate import Migrate
 from flask_sqlalchemy import SQLAlchemy
 from flask_bcrypt import Bcrypt
 from flask_jwt_extended import (
@@ -10,9 +11,40 @@ from datetime import datetime
 import pytz
 from sqlalchemy import LargeBinary
 import os
-
+from deepface import DeepFace
+from sqlalchemy import UniqueConstraint
 # Import Adafruit IO MQTT publishing functionality from separate module
-from adafruit_io_client import publish_command, AIO_FEED_DOOR, AIO_FEED_LED, AIO_FEED_LIGHT
+import adafruit_io_client as aio
+import cv2
+import numpy as np
+import base64
+import time
+
+###############################################################################
+# Adafruit CONFIGURATION
+###############################################################################
+
+def message(client, feed_id, payload):#edit this to manipulate aio
+    
+    if feed_id == aio.AIO_FEED:
+        print("Message received from Adafruit IO!")
+        # Process the message as needed
+        # Example: print the payload
+        print(f"Feed ID: {feed_id}, Payload: {payload}")
+    elif feed_id == aio.AIO_FEED_DOOR:
+        print("Door command received:", payload)
+    elif feed_id == aio.AIO_FEED_LIGHT:
+        print("Light command received:", payload)
+    elif feed_id == aio.AIO_FEED_LED:
+        print("LED command received:", payload)
+    elif feed_id == aio.AIO_FEED_BUTTON:
+        print("Button command received:", payload)
+
+
+
+client = aio.normal_aio(message)
+client.connect()
+client.loop_background()
 
 ###############################################################################
 # FLASK APP CONFIGURATION
@@ -22,14 +54,13 @@ CORS(app)
 
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///data.db'
 app.config['JWT_SECRET_KEY'] = 'supersecretkey'
-
+app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB limit
 db = SQLAlchemy(app)
+migrate = Migrate(app, db)
 bcrypt = Bcrypt(app)
 jwt = JWTManager(app)
 
 VIETNAM_TZ = pytz.timezone('Asia/Ho_Chi_Minh')
-
-
 ###############################################################################
 # MODELS
 ###############################################################################
@@ -60,7 +91,7 @@ class NormalUser(User):
     id = db.Column(db.Integer, db.ForeignKey('users.id'), primary_key=True)
     action = db.Column(db.String(120), nullable=True)
     __mapper_args__ = {
-        'polymorphic_identity': 'normal'  # Changed from 'user' to 'normal'
+        'polymorphic_identity': 'normal'
     }
 
 
@@ -78,12 +109,31 @@ class AdminUser(User):
 # ---------------------------
 class FaceIdentity(db.Model):
     __tablename__ = 'face_identity'
+    # id = db.Column(db.Integer, primary_key=True)
+    # face_id = db.Column(db.String(120), unique=True, nullable=True)
+    # name = db.Column(db.String(80), nullable=True)
+    # face_image = db.Column(LargeBinary, nullable=True)  # JPG/JPEG binary data
+    # user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+
     id = db.Column(db.Integer, primary_key=True)
-    face_id = db.Column(db.String(120), unique=True, nullable=True)
+    face_id = db.Column(db.String(120), nullable=True)          # no longer globally unique
     name = db.Column(db.String(80), nullable=True)
-    face_image = db.Column(LargeBinary, nullable=True)  # JPG/JPEG binary data
+    face_image = db.Column(db.LargeBinary, nullable=True)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
 
+    __table_args__ = (
+        UniqueConstraint('user_id', 'face_id', name='uix_user_face'),
+    )
+
+# ---------------------------
+# OpenDoor Log Model
+# ---------------------------
+class OpenDoorLog(db.Model):
+    __tablename__ = 'open_door_logs'
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(80), nullable=True)
+    timestamp = db.Column(db.DateTime, default=lambda: datetime.now(VIETNAM_TZ))
+    unknown_person = db.Column(db.LargeBinary, nullable=True)  # Optional: store image of unknown person
 
 # ---------------------------
 # Place Model
@@ -107,17 +157,8 @@ class Equipment(db.Model):
     start = db.Column(db.DateTime, default=lambda: datetime.now(VIETNAM_TZ))
     end = db.Column(db.DateTime, nullable=True)
     place_id = db.Column(db.Integer, db.ForeignKey('places.id'), nullable=True)
-    led_lcds = db.relationship('LedLCD', backref='equipment', lazy=True)
     lights = db.relationship('Light', backref='equipment', lazy=True)
     doors = db.relationship('Door', backref='equipment', lazy=True)
-
-
-class LedLCD(db.Model):
-    __tablename__ = 'led_lcd'
-    id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(120), nullable=False)
-    equipment_id = db.Column(db.Integer, db.ForeignKey('equipment.id'), nullable=False)
-
 
 class Light(db.Model):
     __tablename__ = 'light'
@@ -214,7 +255,7 @@ def register():
     else:
         action = data.get('action', 'default_action')
         new_user = NormalUser(
-            type='user',  # Normal users are stored with polymorphic_identity "user" but mapped as NormalUser
+            type='normal',
             name=name,
             account=account,
             phone=phone,
@@ -240,6 +281,29 @@ def login():
         access_token = create_access_token(identity=str(user.id))
         return jsonify({'access_token': access_token}), 200
     return jsonify({'message': 'Invalid credentials'}), 401
+
+# ---------------------------
+# Admin: List All Users
+# ---------------------------
+@app.route('/admin/users', methods=['GET'])
+@jwt_required()
+def admin_list_users():
+    current_user_id = int(get_jwt_identity())
+    current_user = User.query.get(current_user_id)
+    if not current_user or current_user.type != 'admin':
+        return jsonify({"message": "Unauthorized: admin access required"}), 403
+
+    users = User.query.all()
+    output = [
+        {
+            "id":   u.id,
+            "name": u.name,
+            "type": u.type,
+            "phone": u.phone
+        }
+        for u in users
+    ]
+    return jsonify(output), 200
 
 @app.route('/me', methods=['GET'])
 @jwt_required()
@@ -313,19 +377,6 @@ def create_or_update_face_identity():
         db.session.add(new_face)
     db.session.commit()
     return jsonify({'message': 'Face identity saved/updated'}), 200
-
-
-@app.route('/face_identity', methods=['GET'])
-@jwt_required()
-def get_face_identity():
-    current_user_id = int(get_jwt_identity())
-    user = User.query.get(current_user_id)
-    if not user or not user.face_identity:
-        return jsonify({'message': 'Face identity not found'}), 404
-    fi = user.face_identity
-    import base64
-    encoded_image = base64.b64encode(fi.face_image).decode('utf-8') if fi.face_image else None
-    return jsonify({'id': fi.id, 'face_id': fi.face_id, 'name': fi.name, 'face_image': encoded_image}), 200
 
 
 # ---------------------------
@@ -409,7 +460,6 @@ def get_equipment_endpoint(equipment_id):
     eq = Equipment.query.get(equipment_id)
     if not eq:
         return jsonify({"message": "Equipment not found"}), 404
-    led_lcds = [{"id": lcd.id, "name": lcd.name} for lcd in eq.led_lcds]
     lights = [{"id": l.id, "switch": l.switch} for l in eq.lights]
     doors = [{"id": d.id, "servo": d.servo} for d in eq.doors]
     return jsonify({
@@ -419,7 +469,6 @@ def get_equipment_endpoint(equipment_id):
         "start": eq.start.isoformat() if eq.start else None,
         "end": eq.end.isoformat() if eq.end else None,
         "place_id": eq.place_id,
-        "led_lcds": led_lcds,
         "lights": lights,
         "doors": doors
     }), 200
@@ -463,37 +512,6 @@ def delete_equipment_endpoint(equipment_id):
     db.session.delete(eq)
     db.session.commit()
     return jsonify({"message": "Equipment deleted"}), 200
-
-
-# ---------------------------
-# LedLCD Routes
-# ---------------------------
-@app.route('/equipment/<int:equipment_id>/ledlcd', methods=['POST'])
-@jwt_required()
-def create_ledlcd_endpoint():
-    equipment_id = request.view_args['equipment_id']
-    eq = Equipment.query.get(equipment_id)
-    if not eq:
-        return jsonify({"message": "Equipment not found"}), 404
-    data = request.json
-    name = data.get('name')
-    if not name:
-        return jsonify({"message": "'name' is required for LedLCD"}), 400
-    lcd = LedLCD(name=name, equipment_id=equipment_id)
-    db.session.add(lcd)
-    db.session.commit()
-    return jsonify({"message": "LedLCD created", "id": lcd.id}), 201
-
-
-@app.route('/equipment/<int:equipment_id>/ledlcd', methods=['GET'])
-@jwt_required()
-def get_ledlcd_for_equipment(equipment_id):
-    eq = Equipment.query.get(equipment_id)
-    if not eq:
-        return jsonify({"message": "Equipment not found"}), 404
-    lcds = [{"id": lcd.id, "name": lcd.name} for lcd in eq.led_lcds]
-    return jsonify(lcds), 200
-
 
 # ---------------------------
 # Light Routes
@@ -565,6 +583,17 @@ def create_control():
     equipment_id = data.get('equipment_id')
     if not action or not device_type or not device_id:
         return jsonify({"message": "action, device_type, and device_id are required"}), 400
+
+    feed_map = {
+        "door": aio.AIO_FEED_DOOR,
+        "light": aio.AIO_FEED_LIGHT,
+    }
+
+    feed = feed_map.get(device_type)
+
+    if feed is None:
+        return jsonify({"message": "Unsupported device type"}), 400
+
     control = Control(
         action=action,
         device_type=device_type,
@@ -574,8 +603,32 @@ def create_control():
         status=data.get('status', 'pending')
     )
     db.session.add(control)
-    db.session.commit()
-    return jsonify({"message": "Control created", "id": control.id}), 201
+    db.session.flush()
+
+    try:
+        if action == "open door" or action == "close door":
+            client.publish(feed, "ON") if action == "open door" else client.publish(feed, "OFF")  
+            print(f"Published to {feed}: {'ON' if action == 'open door' else 'OFF'}")
+        else:
+            client.publish(feed, "ON") if action == "turn on light" else client.publish(feed, "OFF")
+        control.status     = 'sent'
+        control.start_time = datetime.now(VIETNAM_TZ)
+        db.session.commit()
+
+        return jsonify({
+            "message": f"Command '{action}' sent to {device_type}.",
+            "control": {
+                "id":          control.id,
+                "action":      control.action,
+                "device_type": control.device_type,
+                "device_id":   control.device_id,
+                "status":      control.status
+            }
+        }), 201
+
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"message": "Failed to send command", "error": str(e)}), 500
 
 
 @app.route('/controls', methods=['GET'])
@@ -594,27 +647,6 @@ def get_controls():
         'equipment_id': c.equipment_id
     } for c in controls]
     return jsonify(output), 200
-
-
-@app.route('/controls/<int:control_id>/execute', methods=['POST'])
-@jwt_required()
-def execute_control(control_id):
-    current_user_id = int(get_jwt_identity())
-    control = Control.query.filter_by(id=control_id, user_id=current_user_id).first()
-    if not control:
-        return jsonify({"message": "Control not found or not owned by user"}), 404
-    device_type = control.device_type.lower()
-    if device_type == "door":
-        feed = AIO_FEED_DOOR
-    elif device_type == "led":
-        feed = AIO_FEED_LED
-    elif device_type == "light":
-        feed = AIO_FEED_LIGHT
-    else:
-        return jsonify({"message": "Unsupported device type"}), 400
-    publish_command(feed, control.action)
-    return jsonify({"message": f"Command '{control.action}' sent to {control.device_type}."}), 200
-
 
 @app.route('/controls/<int:control_id>', methods=['PUT'])
 @jwt_required()
@@ -659,15 +691,119 @@ def admin_delete_normal_user(user_id):
     target_user = User.query.get(user_id)
     if not target_user:
         return jsonify({"message": "User not found"}), 404
-    if target_user.type != 'user':
+    if target_user.type != 'normal' and target_user.type != 'admin':
         return jsonify({"message": "Cannot delete an admin user via this endpoint"}), 400
     db.session.delete(target_user)
     db.session.commit()
     return jsonify({"message": "Normal user deleted successfully"}), 200
+import base64
 
+@app.route('/open_door_logs/latest', methods=['GET'])
+@jwt_required()
+def get_latest_open_door_logs():
+    # Known persons: name is not "Unknown person"
+    known_logs = OpenDoorLog.query.filter(OpenDoorLog.name != "Unknown Person")\
+        .order_by(OpenDoorLog.timestamp.desc()).limit(5).all()
+    
+    # Unknown person: name is exactly "Unknown person"
+    unknown_logs = OpenDoorLog.query.filter(OpenDoorLog.name == "Unknown Person")\
+        .order_by(OpenDoorLog.timestamp.desc()).limit(1).all()
+
+    known_output = []
+    for log in known_logs:
+        log_data = {
+            "id": log.id,
+            "name": log.name,
+            "timestamp": log.timestamp.isoformat()
+        }
+        known_output.append(log_data)
+
+    unknown_output = []
+    for log in unknown_logs:
+        log_data = {
+            "id": log.id,
+            "name": log.name,
+            "timestamp": log.timestamp.isoformat()
+        }
+        if log.unknown_person:
+            encoded_image = base64.b64encode(log.unknown_person).decode('utf-8')
+            log_data["unknown_person_image"] = f"data:image/jpeg;base64,{encoded_image}"
+        unknown_output.append(log_data)
+
+    return jsonify({
+        "known_logs": known_output,
+        "latest_unknown_log": unknown_output
+    }), 200
+
+
+
+###############################################################################
+# AI module (Adafruit IO Image Processing)
+###############################################################################
+img_counter = 0
+def img_message(client, feed_id, payload):
+    if feed_id == aio.AIO_FEED_IMAGE:
+        # print("Image received from Adafruit IO!")
+        global img_counter
+        img_counter += 1
+        try:
+            # Decode Base64 data
+            image_data = base64.b64decode(payload)
+            image_name = f"{img_counter}.jpg"
+            with open(image_name, "wb") as img_file:
+                img_file.write(image_data)
+            print(f"Image saved as {img_counter}.jpg")
+        except Exception as e:
+            print("Error processing image:", e)
+        if img_counter == 2:
+            img_counter = 0
+            with app.app_context():
+                ids = db.session.execute(db.select(FaceIdentity.name, FaceIdentity.face_image, FaceIdentity.user_id)).all()
+            ids = [(x[0],cv2.imdecode(np.fromstring(x[1], np.uint8),cv2.IMREAD_COLOR),x[2]) for x in ids] #npdarray of bgr
+            flag = False
+            for i in range(5):
+                img_name = f"{i+1}.jpg"
+                if not os.path.exists(img_name):
+                    continue
+                if not flag:
+                    for id in ids:
+                        try:
+                            result = DeepFace.verify(img_name, id[1], model_name='Facenet512')
+                            if result['verified']:
+                                client.publish(aio.AIO_FEED_DOOR, "ON")
+                                client.publish(aio.AIO_FEED, id[0])
+                                with app.app_context():
+                                    db.session.add(Control(
+                                        action="open door",
+                                        device_type="door",
+                                        device_id=1,
+                                        status="sent",
+                                        user_id=id[2],  
+                                        equipment_id=1  
+                                    ))
+                                    db.session.add(OpenDoorLog(name=id[0], timestamp=datetime.now(VIETNAM_TZ)))
+                                    db.session.commit()
+                                flag = True
+                                break
+                        except Exception as e:
+                            print("Error in verification:", e)
+                # os.remove(img_name)
+            if not flag:
+                client.publish(aio.AIO_FEED, "Unknown Person")
+                img_data = None
+                with open(img_name, "rb") as image_file:
+                    img_data = image_file.read()
+                with app.app_context():
+                    if img_data:
+                        print(type(img_data))
+                        db.session.add(OpenDoorLog(name="Unknown Person", timestamp=datetime.now(VIETNAM_TZ), unknown_person=img_data))
+                        db.session.commit()
 
 ###############################################################################
 # RUN THE APP
 ###############################################################################
 if __name__ == '__main__':
+    img_aio_client = aio.aio_listener_img(img_message) 
+    img_aio_client.connect()
+    img_aio_client.loop_background()  # Keep MQTT connection alive in the background
     app.run(debug=True)
