@@ -29,17 +29,22 @@ const Action = () => {
         headers: { Authorization: `Bearer ${token}` }
       });
 
-      const logs = res.data.map(log => ({
+      const unknownLog = res.data.latest_unknown_log?.[0];
+      if (unknownLog) {
+        setLatestUnknownLog({
+          time: new Date(unknownLog.timestamp).toLocaleTimeString(),
+          name: unknownLog.name,
+          image: unknownLog.unknown_person_image || null,
+        });
+      } else {
+        setLatestUnknownLog(null);
+      }
+
+      const knownLogs = res.data.known_logs.map(log => ({
         time: new Date(log.timestamp).toLocaleTimeString(),
         name: log.name,
-        image: log.unknown_person_image || null,
       }));
-
-      const unknown = logs.find(log => log.image);
-      setLatestUnknownLog(unknown || null);
-
-      const known = logs.filter(log => log.name !== 'Unknown').slice(0, 2);
-      setSystemOverviewLogs(known);
+      setSystemOverviewLogs(knownLogs);
     } catch (err) {
       console.error("Failed to fetch logs:", err);
     }
@@ -49,9 +54,7 @@ const Action = () => {
 
   const handleToggle = async (type) => {
     const newState = !deviceStates[type];
-    const action = type === 'door'
-      ? (newState ? 'open' : 'close')
-      : (newState ? 'turn on' : 'turn off');
+    const action = type === 'door' ? (newState ? 'open' : 'close') : (newState ? 'turn on' : 'turn off');
 
     setDeviceStates(prev => ({ ...prev, [type]: newState }));
     setMessage('');
@@ -96,7 +99,8 @@ const Action = () => {
           return (
             <div key={type} style={styles.card}>
               <div style={styles.cardHeader}>
-                <div style={styles.deviceIcon(type)}>
+
+<div style={styles.deviceIcon(type)}>
                   {type === 'door' ? '🚪' : '💡'}
                 </div>
                 <h3 style={styles.cardTitle}>{label} Controller</h3>
@@ -164,13 +168,13 @@ const Action = () => {
             <span>{Object.values(deviceStates).filter(Boolean).length}</span>
           </div>
           <div style={{ marginTop: '1rem' }}>
-            <h4 style={{ ...styles.panelTitle, fontSize: '1rem' }}>Open door log</h4>
+            <h4 style={{ ...styles.panelTitle, fontSize: '1rem' }}>Recent Door Open with FaceID</h4>
             {systemOverviewLogs.length === 0 ? (
               <p style={{ color: colors.textMuted }}>No known person entries yet</p>
             ) : (
               systemOverviewLogs.map((log, index) => (
                 <div key={index} style={styles.statusItem}>
-                  <span>{log.name}</span>
+<span>{log.name}</span>
                   <span>{log.time}</span>
                 </div>
               ))
@@ -306,7 +310,7 @@ const styles = {
     width: '30px',
     height: '30px',
     backgroundColor: 'white',
-    borderRadius: '50%',
+borderRadius: '50%',
     boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
     transition: 'all 0.2s ease',
   }),

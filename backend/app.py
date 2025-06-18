@@ -701,9 +701,25 @@ import base64
 @app.route('/open_door_logs/latest', methods=['GET'])
 @jwt_required()
 def get_latest_open_door_logs():
-    logs = OpenDoorLog.query.order_by(OpenDoorLog.timestamp.desc()).limit(5).all()
-    output = []
-    for log in logs:
+    # Known persons: name is not "Unknown person"
+    known_logs = OpenDoorLog.query.filter(OpenDoorLog.name != "Unknown Person")\
+        .order_by(OpenDoorLog.timestamp.desc()).limit(5).all()
+    
+    # Unknown person: name is exactly "Unknown person"
+    unknown_logs = OpenDoorLog.query.filter(OpenDoorLog.name == "Unknown Person")\
+        .order_by(OpenDoorLog.timestamp.desc()).limit(1).all()
+
+    known_output = []
+    for log in known_logs:
+        log_data = {
+            "id": log.id,
+            "name": log.name,
+            "timestamp": log.timestamp.isoformat()
+        }
+        known_output.append(log_data)
+
+    unknown_output = []
+    for log in unknown_logs:
         log_data = {
             "id": log.id,
             "name": log.name,
@@ -712,9 +728,13 @@ def get_latest_open_door_logs():
         if log.unknown_person:
             encoded_image = base64.b64encode(log.unknown_person).decode('utf-8')
             log_data["unknown_person_image"] = f"data:image/jpeg;base64,{encoded_image}"
-        output.append(log_data)
+        unknown_output.append(log_data)
 
-    return jsonify(output), 200
+    return jsonify({
+        "known_logs": known_output,
+        "latest_unknown_log": unknown_output
+    }), 200
+
 
 
 ###############################################################################
@@ -735,7 +755,7 @@ def img_message(client, feed_id, payload):
             print(f"Image saved as {img_counter}.jpg")
         except Exception as e:
             print("Error processing image:", e)
-        if img_counter == 5:
+        if img_counter == 2:
             img_counter = 0
             with app.app_context():
                 ids = db.session.execute(db.select(FaceIdentity.name, FaceIdentity.face_image, FaceIdentity.user_id)).all()

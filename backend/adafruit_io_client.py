@@ -22,7 +22,6 @@ def normal_aio(message):
         print("Subcribed to Adafruit IO feed")
         client.subscribe(AIO_FEED)
         client.subscribe(AIO_FEED_DOOR)
-        client.subscribe(AIO_FEED_LED)
         client.subscribe(AIO_FEED_LIGHT)
         client.subscribe(AIO_FEED_BUTTON)
     def disconnected(client):
